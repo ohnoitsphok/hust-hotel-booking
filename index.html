@@ -1,0 +1,2709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HUST Hotel Booking Web System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#0f172a'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    ::selection { background-color: #dbeafe; color: #1e3a8a; }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    @media print {
+      body * { visibility: hidden !important; }
+      #printable-voucher, #printable-voucher * { visibility: visible !important; }
+      #printable-voucher {
+        position: fixed !important;
+        left: 0; top: 0; width: 100%;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 24px !important;
+        background: #ffffff !important;
+      }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M4 21V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14M9 9h2m2 0h2m-6 4h2m2 0h2m-4 8v-4h2v4" />
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <h1 id="app-title" class="text-sm sm:text-base font-semibold tracking-tight truncate">HUST Hotel Booking System</h1>
+          <p id="app-subtitle" class="text-xs text-slate-400 truncate hidden sm:block">8-Step Reservation Workflow · Overbooking Control · Single-Hotel Demo</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+        <!-- VI / EN Language Toggle (NFR-06) -->
+        <div class="inline-flex rounded-lg bg-slate-800 p-0.5 border border-slate-700" role="group" aria-label="Language toggle">
+          <button id="btn-lang-vi" type="button" onclick="setLang('vi')" class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors">VI</button>
+          <button id="btn-lang-en" type="button" onclick="setLang('en')" class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors">EN</button>
+        </div>
+
+        <!-- Quick Role Switcher (NFR-03) -->
+        <div class="flex items-center gap-1.5">
+          <label for="role-switcher" id="lbl-role" class="text-xs text-slate-400 hidden md:inline">Role:</label>
+          <select id="role-switcher" onchange="setRole(this.value)" class="bg-slate-800 text-slate-100 text-xs font-medium border border-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="guest">Guest</option>
+            <option value="agent">Travel Agent</option>
+            <option value="staff">Reservation Staff</option>
+            <option value="receptionist">Receptionist</option>
+            <option value="manager">Manager</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+
+        <!-- Reset Demo Data -->
+        <button id="btn-reset-demo" type="button" onclick="resetDemoData()" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 0 0 4.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 0 1-15.357-2m15.357 2H15" />
+          </svg>
+          <span id="txt-reset-demo" class="hidden sm:inline">Reset Demo Data</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace Layout -->
+  <div class="max-w-[1440px] w-full mx-auto flex-1 flex flex-col lg:flex-row">
+    <!-- Role-Adaptive Sidebar Navigation -->
+    <aside class="lg:w-64 shrink-0 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-3 sm:p-4">
+      <div id="role-context-card" class="mb-3 p-3 rounded-xl bg-slate-50 border border-slate-200"></div>
+      <nav id="main-nav" class="flex lg:flex-col gap-1.5 overflow-x-auto pb-1 lg:pb-0" aria-label="Primary modules"></nav>
+      <div id="scope-note" class="hidden lg:block mt-5 pt-4 border-t border-slate-200 text-xs text-slate-500 space-y-1.5"></div>
+    </aside>
+
+    <!-- Primary Content Area -->
+    <main id="app-content" class="flex-1 p-4 sm:p-6 min-w-0"></main>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Reusable Modal Backdrop -->
+  <div id="modal-root" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/50 p-4 overflow-y-auto" role="dialog" aria-modal="true">
+    <div id="modal-panel" class="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"></div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. BILINGUAL I18N DICTIONARY (VI / EN - NFR-06)
+    // =========================================================================
+    const I18N = {
+      en: {
+        appTitle: 'HUST Hotel Booking System',
+        appSubtitle: '8-Step Reservation Workflow · Overbooking Control · Single-Hotel Demo',
+        roleLabel: 'Role:',
+        resetDemo: 'Reset Demo Data',
+        resetSuccess: 'Demo data reset to Week 3 Report baseline (Table 9).',
+        roles: {
+          guest: 'Guest',
+          agent: 'Travel Agent',
+          staff: 'Reservation Staff',
+          receptionist: 'Receptionist',
+          manager: 'Manager',
+          admin: 'Admin'
+        },
+        roleDesc: {
+          guest: 'Search available rooms, view rate tiers, and complete reservation in ≤ 5 steps.',
+          agent: 'Book for clients using hotel Allotment or Free Sale contracts.',
+          staff: 'Handle reconfirmations, modifications, cancellations, 18:00 cutoff, waitlist & blacklist.',
+          receptionist: 'View daily arrival/departure lists and log walk-ins, early check-outs, overstays, no-shows.',
+          manager: 'Inspect monthly room density, edit inventory & policies, and run SC-02 concurrency test.',
+          admin: 'Full system oversight, role accounts, policy settings, and NFR-04 audit log.'
+        },
+        nav: {
+          booking: 'Booking Flow (5 Steps)',
+          staff: 'Reservation Staff Desk',
+          reception: 'Reception Daily View',
+          manager: 'Manager & Admin'
+        },
+        scopeGuardrailTitle: 'Scope Guardrails (Week 3)',
+        scopeIncluded: 'Included: Step 2 formula, 18:00 auto-release, modify/cancel log, waitlist, blacklist, density map.',
+        scopeExcluded: 'Excluded: Online payment gateways, CRS/GDS APIs, physical room check-in, SMS/push.',
+        steps: [
+          '1. Search & Request',
+          '2. Availability Check',
+          '3. Rate & Requests',
+          '4. Guest & Guarantee',
+          '5. E-Voucher Confirm'
+        ],
+        presets: {
+          title: 'Quick Demo Presets:',
+          table9: 'Table 9: 15 Standard · 12/11 · 3 Nights (Shortfall)',
+          lan: 'Ms. Lan: 2 Standard · 12/11 · 3 Nights (Available)',
+          blacklist: 'Blacklist Check: Trịnh Quốc Bảo'
+        },
+        statusLabels: {
+          'Confirmed': 'Confirmed',
+          'Pending Reconfirm': 'Pending Reconfirm',
+          'Modified': 'Modified',
+          'Cancelled': 'Cancelled',
+          'Expired (18:00 Cutoff)': 'Expired (18:00 Cutoff)',
+          'No-Show': 'No-Show',
+          'Waiting': 'Waiting',
+          'Notified': 'Notified',
+          'Converted': 'Converted'
+        },
+        booking: {
+          heading: 'Room Search & 5-Step Reservation',
+          sub: 'Step 1–5 digital workflow with Step 2 overbooking formula: Sellable = T + min(D, p% × Total)',
+          checkIn: 'Check-in Date',
+          nights: 'Nights',
+          roomType: 'Room Type',
+          qty: 'Rooms Requested',
+          guests: 'Total Guests',
+          source: 'Booking Source',
+          btnCheck: 'Run Step 2 Availability Check',
+          formulaTitle: 'Step 2 Availability Breakdown (Per Night)',
+          formulaLegend: 'T = Total − OutOfOrder − Occupied − Booked | D = Uncertain + Cancelled + EarlyCheckout | Cap = floor(p% × Total)',
+          nightCol: 'Night',
+          totalCol: 'Total',
+          oooCol: 'OOO',
+          occCol: 'Occupied',
+          bookedCol: 'Booked',
+          tCol: 'Vacant (T)',
+          dCol: 'Adj (D)',
+          capCol: 'Cap (p%)',
+          sellableCol: 'Sellable',
+          reqCol: 'Requested',
+          resultCol: 'Result',
+          sufficient: 'Sufficient',
+          shortBy: 'Short by {n}',
+          branchAccept: 'All nights available! Proceed to Step 3 to choose rate tier & enter guest details.',
+          branchReject: 'Not enough sellable rooms on one or more nights (FR-08 Branch 3b).',
+          altBookPrefix: 'Book Available Prefix ({n} nights)',
+          altSwitchRoom: 'Switch to {type} ({n} sellable)',
+          altNextDate: 'Shift Check-in to {date}',
+          joinWaitlistTitle: 'Or Join Priority Waitlist (FR-09 / BR-07)',
+          joinWaitlistBtn: 'Join Waitlist',
+          wlNamePlaceholder: 'Guest / Company Name',
+          wlPhonePlaceholder: 'Phone',
+          wlEmailPlaceholder: 'Email',
+          rateTitle: 'Step 3: Choose Rate Tier & Special Requests (FR-06, FR-07)',
+          tiers: [
+            { id: 'standard', name: 'Standard Room Only', mult: 1.0, desc: 'Base room rate without extras' },
+            { id: 'flex', name: 'Flexible + Breakfast', mult: 1.15, desc: 'Daily breakfast buffet & flexible modification' },
+            { id: 'vip', name: 'Executive Full Service', mult: 1.30, desc: 'Breakfast, airport pickup priority & late check-out' }
+          ],
+          specialReq: 'Special Requests (Non-smoking, extra bed, late arrival, etc.)',
+          guestTitle: 'Step 4: Guest Information & Guarantee (FR-02, BR-01–03, NFR-03)',
+          guestName: 'Guest / Group Name *',
+          registrantName: 'Registrant Name *',
+          guestType: 'Guest Type',
+          indiv: 'Individual (Reconfirm 3d prior)',
+          group: 'Group (Reconfirm 15d prior)',
+          phone: 'Phone *',
+          email: 'Email *',
+          address: 'Address',
+          paymentUnit: 'Payment / Billing Unit',
+          resType: 'Reservation Type',
+          guaranteed: 'Guaranteed (Held until next-day check-out; BR-01)',
+          nonGuaranteed: 'Non-guaranteed (Auto-released at {time} on arrival day; BR-02)',
+          guaranteeMethod: 'Guarantee Method (BR-03)',
+          methods: {
+            'Deposit': 'Cash / Bank Deposit',
+            'Prepaid': 'Prepayment',
+            'Credit Card': 'Credit Card (Masked only per NFR-03)',
+            'Agent Contract': 'Travel Agent / Corporate Contract'
+          },
+          cardNumber: 'Credit Card Number (auto-masked to ****-XXXX on save)',
+          depositAmount: 'Guarantee / Deposit Amount (VND)',
+          blacklistAlertTitle: 'BLACKLIST WARNING (FR-10 / BR-08)',
+          blacklistAlertDesc: 'Guest matches blacklist record: {reason}. Standard guest booking is blocked; Staff/Manager may review or reject.',
+          submitBooking: 'Confirm & Generate Booking Voucher (Step 5)',
+          backToSearch: 'Edit Search',
+          continueStep3: 'Continue to Step 3',
+          continueStep4: 'Continue to Step 4'
+        },
+        staff: {
+          heading: 'Reservation Staff Desk',
+          sub: 'Manage bookings, 18:00 auto-release, reconfirmations, Step 2-verified modifications, cancellations & waitlist priority.',
+          searchPlaceholder: 'Search guest name or booking no...',
+          filterDate: 'Arrival Date',
+          filterStatus: 'All Statuses',
+          sortAZ: 'Sort Name A–Z',
+          sortDate: 'Sort Arrival Date',
+          btnCutoff: 'Simulate 18:00 Cutoff',
+          btnReminders: 'Send Reconfirm Reminders',
+          colBookingNo: 'Booking No',
+          colGuest: 'Guest / Source',
+          colStay: 'Stay & Room',
+          colGuarantee: 'Guarantee',
+          colStatus: 'Status',
+          colActions: 'Actions',
+          btnReconfirm: 'Reconfirm',
+          btnModify: 'Modify',
+          btnCancel: 'Cancel',
+          btnHistory: 'History',
+          btnEmail: 'Voucher',
+          waitlistHeading: 'Priority Waitlist (FR-09 / BR-07)',
+          blacklistHeading: 'Blacklist Registry (FR-10 / BR-08)',
+          btnConvertWL: 'Convert to Booking',
+          btnAddBL: 'Add to Blacklist',
+          btnRemoveBL: 'Remove'
+        },
+        reception: {
+          heading: 'Reception Daily Arrivals & Departures',
+          sub: 'Step 8 summary for front desk (Note: physical check-in, room numbering & billing happen outside this system).',
+          targetDate: 'Operating Date',
+          kpiArrivals: 'Expected Arrivals',
+          kpiDepartures: 'Expected Departures',
+          kpiWalkins: 'Walk-ins Logged',
+          kpiEarly: 'Early Check-outs',
+          kpiOverstays: 'Overstays',
+          kpiNoShows: 'No-Shows',
+          arrivalsTitle: 'Daily Arrival List',
+          departuresTitle: 'Daily Departure List',
+          btnAddWalkin: '+ Log Walk-in',
+          btnMarkEarly: 'Early Check-out (+1 Adj)',
+          btnMarkOverstay: 'Mark Overstay',
+          btnMarkNoShow: 'Mark No-Show'
+        },
+        manager: {
+          heading: 'Manager & Admin Operations Console',
+          sub: 'Monthly room density, room inventory, overbooking policy, agent contracts, SC-02 concurrency test & audit log.',
+          densityTitle: 'Monthly Room Density View — Nov 2026 (FR-13)',
+          inventoryTitle: 'Room Inventory & Base Rates (FR-20)',
+          policyTitle: 'Booking Policy Configurator (FR-05)',
+          agentsTitle: 'Agent Allotment & Free Sale Contracts (FR-03, BR-09)',
+          sc02Title: 'Concurrency Integrity Verification (SC-02 / NFR-02)',
+          sc02Desc: 'Fires 50 simultaneous 1-room requests via Promise.all against Night 3 (2026-11-14 Standard) through an async transaction lock.',
+          btnRunSc02: 'Run 50 Concurrent Requests Test',
+          auditTitle: 'System Audit & Change Log (NFR-04)',
+          saveInventory: 'Save Inventory',
+          savePolicy: 'Save Policy'
+        }
+      },
+      vi: {
+        appTitle: 'Hệ thống Đặt phòng Khách sạn HUST',
+        appSubtitle: 'Quy trình đặt phòng 8 bước · Kiểm soát Overbooking · Demo 1 khách sạn',
+        roleLabel: 'Vai trò:',
+        resetDemo: 'Khôi phục dữ liệu mẫu',
+        resetSuccess: 'Đã khôi phục dữ liệu mẫu Báo cáo Tuần 3 (Bảng 9).',
+        roles: {
+          guest: 'Khách hàng',
+          agent: 'Đại lý du lịch',
+          staff: 'Nhân viên đặt phòng',
+          receptionist: 'Lễ tân',
+          manager: 'Quản lý khách sạn',
+          admin: 'Quản trị viên'
+        },
+        roleDesc: {
+          guest: 'Tìm phòng trống, chọn mức giá và hoàn tất đặt phòng trong ≤ 5 bước.',
+          agent: 'Đặt phòng hộ khách theo hợp đồng Allotment hoặc Free Sale.',
+          staff: 'Xử lý khẳng định lại, sửa/hủy có kiểm tra phòng, cắt hạn 18:00, khách chờ & sổ đen.',
+          receptionist: 'Xem danh sách khách đến/đi hằng ngày; ghi nhận vãng lai, trả sớm, quá hạn, no-show.',
+          manager: 'Theo dõi mật độ phòng theo tháng, sửa quỹ phòng, cấu hình chính sách & chạy test SC-02.',
+          admin: 'Giám sát toàn hệ thống, phân quyền vai trò, chính sách và nhật ký kiểm toán NFR-04.'
+        },
+        nav: {
+          booking: 'Đặt phòng (5 bước)',
+          staff: 'Bàn Nhân viên Đặt phòng',
+          reception: 'Lễ tân Hằng ngày',
+          manager: 'Quản lý & Quản trị'
+        },
+        scopeGuardrailTitle: 'Ranh giới phạm vi (Tuần 3)',
+        scopeIncluded: 'Trong phạm vi: Công thức Bước 2, tự giải phóng 18:00, lịch sử sửa/hủy, khách chờ, sổ đen, mật độ tháng.',
+        scopeExcluded: 'Ngoài phạm vi: Cổng thanh toán online, CRS/GDS, xếp phòng check-in/out, SMS/push.',
+        steps: [
+          '1. Tìm & Yêu cầu',
+          '2. Kiểm tra Bước 2',
+          '3. Chọn giá & Ghi chú',
+          '4. Thông tin & Đảm bảo',
+          '5. Phiếu & Email'
+        ],
+        presets: {
+          title: 'Kịch bản mẫu nhanh:',
+          table9: 'Bảng 9: 15 Standard · 12/11 · 3 Đêm (Thiếu đêm 3)',
+          lan: 'Chị Lan: 2 Standard · 12/11 · 3 Đêm (Đủ phòng)',
+          blacklist: 'Thử sổ đen: Trịnh Quốc Bảo'
+        },
+        statusLabels: {
+          'Confirmed': 'Đã xác nhận',
+          'Pending Reconfirm': 'Chờ khẳng định lại',
+          'Modified': 'Đã sửa đổi',
+          'Cancelled': 'Đã hủy',
+          'Expired (18:00 Cutoff)': 'Hết hạn (18:00)',
+          'No-Show': 'Không đến (No-Show)',
+          'Waiting': 'Đang chờ',
+          'Notified': 'Đã báo có phòng',
+          'Converted': 'Đã chuyển thành đơn'
+        },
+        booking: {
+          heading: 'Tìm phòng & Quy trình Đặt phòng 5 bước',
+          sub: 'Số hóa bước 1–5 với công thức Bước 2: Có thể bán = T + min(Đ, p% × Tổng)',
+          checkIn: 'Ngày đến',
+          nights: 'Số đêm',
+          roomType: 'Loại phòng',
+          qty: 'Số phòng yêu cầu',
+          guests: 'Số khách',
+          source: 'Nguồn đặt phòng',
+          btnCheck: 'Kiểm tra khả năng đáp ứng (Bước 2)',
+          formulaTitle: 'Chi tiết tính số phòng có thể bán theo từng đêm (Bước 2)',
+          formulaLegend: 'T = Tổng − Hỏng − Có khách − Đã đặt | Đ = Không chắc chắn + Mới hủy + Trả sớm | Trần = floor(p% × Tổng)',
+          nightCol: 'Đêm lưu trú',
+          totalCol: 'Tổng',
+          oooCol: 'Hỏng/Sửa',
+          occCol: 'Có khách',
+          bookedCol: 'Đã đặt',
+          tCol: 'Thực trống (T)',
+          dCol: 'Điều chỉnh (Đ)',
+          capCol: 'Trần (p%)',
+          sellableCol: 'Bán được',
+          reqCol: 'Yêu cầu',
+          resultCol: 'Kết quả',
+          sufficient: 'Đủ',
+          shortBy: 'Thiếu {n} phòng',
+          branchAccept: 'Mọi đêm đều đủ phòng! Tiếp tục Bước 3 để chọn mức giá và nhập thông tin khách.',
+          branchReject: 'Không đủ phòng bán ở ít nhất một đêm (Bước 3 nhánh b — FR-08).',
+          altBookPrefix: 'Đặt {n} đêm đầu còn đủ phòng',
+          altSwitchRoom: 'Đổi sang {type} (còn {n} phòng)',
+          altNextDate: 'Dời ngày đến sang {date}',
+          joinWaitlistTitle: 'Hoặc đăng ký Danh sách khách chờ (FR-09 / BR-07)',
+          joinWaitlistBtn: 'Vào danh sách chờ',
+          wlNamePlaceholder: 'Tên khách / Đoàn',
+          wlPhonePlaceholder: 'Số điện thoại',
+          wlEmailPlaceholder: 'Email',
+          rateTitle: 'Bước 3: Chọn mức giá & Yêu cầu đặc biệt (FR-06, FR-07)',
+          tiers: [
+            { id: 'standard', name: 'Giá tiêu chuẩn', mult: 1.0, desc: 'Giá phòng cơ bản' },
+            { id: 'flex', name: 'Linh hoạt + Ăn sáng', mult: 1.15, desc: 'Bao gồm buffet sáng & hỗ trợ đổi lịch' },
+            { id: 'vip', name: 'Trọn gói Cao cấp', mult: 1.30, desc: 'Ăn sáng, ưu tiên đón tiễn & trả phòng muộn' }
+          ],
+          specialReq: 'Yêu cầu đặc biệt (Phòng không hút thuốc, giường phụ, đến muộn...)',
+          guestTitle: 'Bước 4: Thông tin khách & Hình thức đảm bảo (FR-02, BR-01–03, NFR-03)',
+          guestName: 'Tên khách / Tên đoàn *',
+          registrantName: 'Người đăng ký *',
+          guestType: 'Đối tượng khách',
+          indiv: 'Khách lẻ (Khẳng định trước 3 ngày)',
+          group: 'Khách đoàn (Khẳng định trước 15 ngày)',
+          phone: 'Số điện thoại *',
+          email: 'Email *',
+          address: 'Địa chỉ',
+          paymentUnit: 'Đơn vị thanh toán',
+          resType: 'Loại đặt phòng',
+          guaranteed: 'Có đảm bảo (Giữ đến check-out ngày hôm sau; BR-01)',
+          nonGuaranteed: 'Không đảm bảo (Tự giải phóng lúc {time} ngày đến; BR-02)',
+          guaranteeMethod: 'Hình thức đảm bảo (BR-03)',
+          methods: {
+            'Deposit': 'Đặt cọc tiền mặt / Chuyển khoản',
+            'Prepaid': 'Thanh toán trước tiền phòng',
+            'Credit Card': 'Thẻ tín dụng (Chỉ lưu dạng che ****-XXXX theo NFR-03)',
+            'Agent Contract': 'Hợp đồng Đại lý / Công ty'
+          },
+          cardNumber: 'Số thẻ tín dụng (tự động che thành ****-XXXX khi lưu)',
+          depositAmount: 'Số tiền đặt cọc / đảm bảo (VNĐ)',
+          blacklistAlertTitle: 'CẢNH BÁO SỔ ĐEN (FR-10 / BR-08)',
+          blacklistAlertDesc: 'Khách trùng danh sách đen: {reason}. Khách tự đặt bị chặn; Nhân viên/Quản lý có thể từ chối hoặc xem xét.',
+          submitBooking: 'Xác nhận & Lập phiếu đặt phòng (Bước 5)',
+          backToSearch: 'Sửa tìm kiếm',
+          continueStep3: 'Tiếp tục Bước 3',
+          continueStep4: 'Tiếp tục Bước 4'
+        },
+        staff: {
+          heading: 'Bàn làm việc Nhân viên Đặt phòng',
+          sub: 'Quản lý phiếu, cắt hạn 18:00, nhắc khẳng định lại, sửa có kiểm tra Bước 2, hủy & ưu tiên khách chờ.',
+          searchPlaceholder: 'Tìm theo tên khách hoặc mã phiếu...',
+          filterDate: 'Ngày đến',
+          filterStatus: 'Tất cả trạng thái',
+          sortAZ: 'Xếp tên A–Z',
+          sortDate: 'Xếp theo ngày đến',
+          btnCutoff: 'Mô phỏng cắt hạn 18:00',
+          btnReminders: 'Gửi nhắc khẳng định lại',
+          colBookingNo: 'Số phiếu',
+          colGuest: 'Khách / Nguồn',
+          colStay: 'Lưu trú & Phòng',
+          colGuarantee: 'Đảm bảo',
+          colStatus: 'Trạng thái',
+          colActions: 'Thao tác',
+          btnReconfirm: 'Khẳng định lại',
+          btnModify: 'Sửa đổi',
+          btnCancel: 'Hủy phiếu',
+          btnHistory: 'Lịch sử',
+          btnEmail: 'Thư XN',
+          waitlistHeading: 'Danh sách khách chờ ưu tiên (FR-09 / BR-07)',
+          blacklistHeading: 'Danh sách đen (FR-10 / BR-08)',
+          btnConvertWL: 'Chuyển thành đặt phòng',
+          btnAddBL: 'Thêm vào sổ đen',
+          btnRemoveBL: 'Xóa'
+        },
+        reception: {
+          heading: 'Tổng hợp Khách đến / Đi hằng ngày (Lễ tân)',
+          sub: 'Đầu ra Bước 8 cho lễ tân (Lưu ý: check-in, xếp số phòng cụ thể và xuất hóa đơn nằm ngoài hệ thống).',
+          targetDate: 'Ngày tổng hợp',
+          kpiArrivals: 'Dự kiến đến',
+          kpiDepartures: 'Dự kiến đi',
+          kpiWalkins: 'Khách vãng lai',
+          kpiEarly: 'Trả phòng sớm',
+          kpiOverstays: 'Ở quá hạn',
+          kpiNoShows: 'Không đến (No-Show)',
+          arrivalsTitle: 'Danh sách khách dự kiến đến trong ngày',
+          departuresTitle: 'Danh sách khách dự kiến trả phòng trong ngày',
+          btnAddWalkin: '+ Ghi nhận vãng lai',
+          btnMarkEarly: 'Trả sớm (+1 Điều chỉnh)',
+          btnMarkOverstay: 'Ghi quá hạn',
+          btnMarkNoShow: 'Đánh dấu No-Show'
+        },
+        manager: {
+          heading: 'Bảng điều khiển Quản lý & Quản trị viên',
+          sub: 'Sơ đồ mật độ phòng tháng, quỹ phòng, chính sách overbooking, đại lý, kiểm thử 50 luồng đồng thời & nhật ký.',
+          densityTitle: 'Sơ đồ mật độ phòng theo tháng — Tháng 11/2026 (FR-13)',
+          inventoryTitle: 'Quản lý quỹ phòng & giá niêm yết (FR-20)',
+          policyTitle: 'Cấu hình chính sách đặt phòng (FR-05)',
+          agentsTitle: 'Hợp đồng đại lý Allotment & Free Sale (FR-03, BR-09)',
+          sc02Title: 'Kiểm chứng toàn vẹn giao dịch đồng thời (SC-02 / NFR-02)',
+          sc02Desc: 'Gửi đồng thời 50 yêu cầu (1 phòng/yêu cầu) qua Promise.all vào Đêm 3 (14/11 Standard) thông qua khóa giao dịch bất đồng bộ.',
+          btnRunSc02: 'Chạy kiểm thử 50 yêu cầu đồng thời',
+          auditTitle: 'Nhật ký hệ thống & Thay đổi (NFR-04)',
+          saveInventory: 'Lưu quỹ phòng',
+          savePolicy: 'Lưu chính sách'
+        }
+      }
+    };
+
+    // =========================================================================
+    // 2. PRE-SEEDED DATA (WEEK 3 REPORT & TABLE 9 SCENARIO)
+    // =========================================================================
+    const STORAGE_KEY = 'hust_hotel_booking_v1';
+
+    function buildSeedData() {
+      return {
+        policies: {
+          overbookingRate: 5,
+          holdUntilTime: '18:00',
+          reconfirmDaysGroup: 15,
+          reconfirmDaysIndiv: 3,
+          cancelFeePercent: 20
+        },
+        roomTypes: [
+          { id: 'Standard', name: 'Standard', total: 100, outOfOrder: 2, basePrice: 1200000, capacity: 2, amenities: 'Wi-Fi, A/C, TV, City View' },
+          { id: 'Superior', name: 'Superior', total: 40, outOfOrder: 1, basePrice: 1800000, capacity: 2, amenities: 'Wi-Fi, A/C, Smart TV, Balcony' },
+          { id: 'Deluxe', name: 'Deluxe', total: 25, outOfOrder: 0, basePrice: 2500000, capacity: 3, amenities: 'Wi-Fi, Bathtub, King Bed, Lounge' },
+          { id: 'Suite', name: 'Suite', total: 10, outOfOrder: 0, basePrice: 4200000, capacity: 4, amenities: 'Living Room, Jacuzzi, Executive Butler' }
+        ],
+        // Table 9 exact baseline metrics for Standard on 2026-11-12, 13, 14.
+        // Note: Active seeded Standard bookings sum to 15 on 11-12, 15 on 11-13, 12 on 11-14.
+        // Active AG-01 allotment is 5/night. So otherBooked = 5, 10, 21 => Booked totals = 25, 30, 38.
+        // Resulting T = 13, 13, 10; D = 9, 6, 3; Cap = 5; Sellable = 18, 18, 13!
+        nightlyLedger: {
+          Standard: {
+            '2026-11-12': { occupied: 60, otherBooked: 5, uncertain: 4, cancelled: 2, earlyCheckout: 3 },
+            '2026-11-13': { occupied: 55, otherBooked: 10, uncertain: 3, cancelled: 1, earlyCheckout: 2 },
+            '2026-11-14': { occupied: 50, otherBooked: 21, uncertain: 2, cancelled: 0, earlyCheckout: 1 }
+          },
+          Superior: {
+            '2026-11-12': { occupied: 12, otherBooked: 4, uncertain: 1, cancelled: 0, earlyCheckout: 1 },
+            '2026-11-13': { occupied: 10, otherBooked: 5, uncertain: 1, cancelled: 0, earlyCheckout: 0 },
+            '2026-11-14': { occupied: 10, otherBooked: 4, uncertain: 1, cancelled: 0, earlyCheckout: 0 }
+          },
+          Deluxe: {
+            '2026-11-12': { occupied: 8, otherBooked: 3, uncertain: 1, cancelled: 0, earlyCheckout: 0 },
+            '2026-11-13': { occupied: 7, otherBooked: 3, uncertain: 0, cancelled: 0, earlyCheckout: 0 },
+            '2026-11-14': { occupied: 6, otherBooked: 2, uncertain: 0, cancelled: 0, earlyCheckout: 0 }
+          },
+          Suite: {
+            '2026-11-12': { occupied: 3, otherBooked: 1, uncertain: 0, cancelled: 0, earlyCheckout: 0 },
+            '2026-11-13': { occupied: 2, otherBooked: 1, uncertain: 0, cancelled: 0, earlyCheckout: 0 },
+            '2026-11-14': { occupied: 2, otherBooked: 1, uncertain: 0, cancelled: 0, earlyCheckout: 0 }
+          }
+        },
+        agents: [
+          { id: 'AG-01', name: 'VietTravel Agency', contractType: 'Allotment', roomType: 'Standard', quota: 5, commission: 10, status: 'Active' },
+          { id: 'AG-02', name: 'SaigonTour Partner', contractType: 'Free Sale', roomType: 'Deluxe', quota: 0, commission: 8, status: 'Active' }
+        ],
+        bookings: [
+          {
+            bookingNo: 'BK-2026-0001',
+            guestName: 'Nguyễn Thị Lan',
+            registrantName: 'Nguyễn Thị Lan',
+            guestType: 'Individual',
+            phone: '0904112233',
+            email: 'lan.nguyen@example.com',
+            address: 'Hai Bà Trưng, Hà Nội',
+            paymentUnit: 'Cá nhân / Individual',
+            roomType: 'Standard',
+            qty: 2,
+            numGuests: 4,
+            checkIn: '2026-11-12',
+            nights: 3,
+            checkOut: '2026-11-15',
+            rateTier: 'standard',
+            unitPrice: 1200000,
+            totalAmount: 7200000,
+            source: 'Online',
+            reservationType: 'Guaranteed',
+            guaranteeMethod: 'Credit Card',
+            cardMasked: '****-4829',
+            depositAmount: 2400000,
+            specialRequest: 'High floor, quiet room',
+            status: 'Confirmed',
+            reconfirmed: true,
+            reconfirmDeadline: '2026-11-09',
+            createdAt: '2026-11-01T09:15:00',
+            createdBy: 'Online Web',
+            history: [
+              { action: 'Created', detail: '2 Standard (12/11–15/11), Guaranteed via Credit Card ****-4829', requestedBy: 'Nguyễn Thị Lan', staff: 'Online System', at: '2026-11-01 09:15' },
+              { action: 'Reconfirmed', detail: 'Guest reconfirmed 3 days prior to arrival (BR-05)', requestedBy: 'Nguyễn Thị Lan', staff: 'Minh Đỗ', at: '2026-11-09 14:20' }
+            ]
+          },
+          {
+            bookingNo: 'BK-2026-0002',
+            guestName: 'Trần Văn Hùng',
+            registrantName: 'Trần Văn Hùng',
+            guestType: 'Individual',
+            phone: '0913556677',
+            email: 'hung.tran@example.com',
+            address: 'Cầu Giấy, Hà Nội',
+            paymentUnit: 'Cá nhân / Individual',
+            roomType: 'Standard',
+            qty: 3,
+            numGuests: 5,
+            checkIn: '2026-11-12',
+            nights: 2,
+            checkOut: '2026-11-14',
+            rateTier: 'standard',
+            unitPrice: 1200000,
+            totalAmount: 7200000,
+            source: 'Phone',
+            reservationType: 'Non-guaranteed',
+            guaranteeMethod: 'None',
+            cardMasked: '',
+            depositAmount: 0,
+            specialRequest: 'Arriving ~17:30',
+            status: 'Pending Reconfirm',
+            reconfirmed: false,
+            reconfirmDeadline: '2026-11-09',
+            createdAt: '2026-11-05T10:30:00',
+            createdBy: 'Staff: Sơn Vũ',
+            history: [
+              { action: 'Created', detail: '3 Standard (12/11–14/11), Non-guaranteed hold until 18:00 (BR-02)', requestedBy: 'Trần Văn Hùng', staff: 'Sơn Vũ', at: '2026-11-05 10:30' }
+            ]
+          },
+          {
+            bookingNo: 'BK-2026-0003',
+            guestName: 'Đoàn VietTravel Hà Nội',
+            registrantName: 'Lê Thu Trang',
+            guestType: 'Group',
+            phone: '02438889999',
+            email: 'groups@viettravel.vn',
+            address: 'Hoàn Kiếm, Hà Nội',
+            paymentUnit: 'VietTravel Corp',
+            roomType: 'Standard',
+            qty: 10,
+            numGuests: 20,
+            checkIn: '2026-11-12',
+            nights: 3,
+            checkOut: '2026-11-15',
+            rateTier: 'flex',
+            unitPrice: 1380000,
+            totalAmount: 41400000,
+            source: 'Agent Allotment',
+            reservationType: 'Guaranteed',
+            guaranteeMethod: 'Agent Contract',
+            cardMasked: '',
+            depositAmount: 15000000,
+            specialRequest: 'Rooms on same floor, breakfast at 06:30',
+            status: 'Confirmed',
+            reconfirmed: true,
+            reconfirmDeadline: '2026-10-28',
+            createdAt: '2026-10-15T11:00:00',
+            createdBy: 'Staff: Phong Võ',
+            history: [
+              { action: 'Created', detail: '10 Standard (12/11–15/11), Group booking via VietTravel contract', requestedBy: 'Lê Thu Trang', staff: 'Phong Võ', at: '2026-10-15 11:00' }
+            ]
+          },
+          {
+            bookingNo: 'BK-2026-0004',
+            guestName: 'Lê Hoàng Nam',
+            registrantName: 'Lê Hoàng Nam',
+            guestType: 'Individual',
+            phone: '0988111222',
+            email: 'nam.le@example.com',
+            address: 'Đống Đa, Hà Nội',
+            paymentUnit: 'Cá nhân / Individual',
+            roomType: 'Superior',
+            qty: 2,
+            numGuests: 3,
+            checkIn: '2026-11-12',
+            nights: 1,
+            checkOut: '2026-11-13',
+            rateTier: 'standard',
+            unitPrice: 1800000,
+            totalAmount: 3600000,
+            source: 'Email',
+            reservationType: 'Non-guaranteed',
+            guaranteeMethod: 'None',
+            cardMasked: '',
+            depositAmount: 0,
+            specialRequest: 'Twin beds preferred',
+            status: 'Confirmed',
+            reconfirmed: true,
+            reconfirmDeadline: '2026-11-09',
+            createdAt: '2026-11-07T15:00:00',
+            createdBy: 'Staff: Minh Đỗ',
+            history: [
+              { action: 'Created', detail: '2 Superior (12/11–13/11), Non-guaranteed hold until 18:00', requestedBy: 'Lê Hoàng Nam', staff: 'Minh Đỗ', at: '2026-11-07 15:00' }
+            ]
+          },
+          {
+            bookingNo: 'BK-2026-0005',
+            guestName: 'Phạm Minh Tuấn',
+            registrantName: 'Phạm Minh Tuấn',
+            guestType: 'Individual',
+            phone: '0977334455',
+            email: 'tuan.pham@example.com',
+            address: 'Ba Đình, Hà Nội',
+            paymentUnit: 'FPT Software',
+            roomType: 'Deluxe',
+            qty: 1,
+            numGuests: 2,
+            checkIn: '2026-11-10',
+            nights: 2,
+            checkOut: '2026-11-12',
+            rateTier: 'vip',
+            unitPrice: 3250000,
+            totalAmount: 6500000,
+            source: 'Online',
+            reservationType: 'Guaranteed',
+            guaranteeMethod: 'Deposit',
+            cardMasked: '',
+            depositAmount: 3250000,
+            specialRequest: 'Invoice for company',
+            status: 'Confirmed',
+            reconfirmed: true,
+            reconfirmDeadline: '2026-11-07',
+            createdAt: '2026-11-03T08:45:00',
+            createdBy: 'Online Web',
+            history: [
+              { action: 'Created', detail: '1 Deluxe (10/11–12/11), Guaranteed via Deposit', requestedBy: 'Phạm Minh Tuấn', staff: 'Online System', at: '2026-11-03 08:45' }
+            ]
+          },
+          {
+            bookingNo: 'BK-2026-0006',
+            guestName: 'Hoàng Gia Bảo',
+            registrantName: 'Hoàng Gia Bảo',
+            guestType: 'Individual',
+            phone: '0933667788',
+            email: 'bao.hoang@example.com',
+            address: 'Quận 1, TP.HCM',
+            paymentUnit: 'Cá nhân / Individual',
+            roomType: 'Standard',
+            qty: 2,
+            numGuests: 2,
+            checkIn: '2026-11-12',
+            nights: 3,
+            checkOut: '2026-11-15',
+            rateTier: 'standard',
+            unitPrice: 1200000,
+            totalAmount: 7200000,
+            source: 'Online',
+            reservationType: 'Guaranteed',
+            guaranteeMethod: 'Prepaid',
+            cardMasked: '',
+            depositAmount: 7200000,
+            specialRequest: '',
+            status: 'No-Show',
+            reconfirmed: false,
+            reconfirmDeadline: '2026-11-09',
+            createdAt: '2026-11-02T16:10:00',
+            createdBy: 'Online Web',
+            history: [
+              { action: 'Created', detail: '2 Standard (12/11–15/11), Guaranteed via Prepayment', requestedBy: 'Hoàng Gia Bảo', staff: 'Online System', at: '2026-11-02 16:10' },
+              { action: 'No-Show', detail: 'Marked No-Show; compensation retained under BR-01', requestedBy: 'Reception', staff: 'Khôi Nguyễn', at: '2026-11-13 12:00' }
+            ]
+          }
+        ],
+        waitlist: [
+          {
+            id: 'WL-2026-01',
+            guestName: 'Vũ Thanh Hương',
+            phone: '0912345678',
+            email: 'huong.vu@example.com',
+            roomType: 'Standard',
+            checkIn: '2026-11-12',
+            nights: 2,
+            qty: 2,
+            status: 'Waiting',
+            createdAt: '2026-11-10 11:20'
+          },
+          {
+            id: 'WL-2026-02',
+            guestName: 'Công ty Á Châu',
+            phone: '0987654321',
+            email: 'booking@achau.vn',
+            roomType: 'Standard',
+            checkIn: '2026-11-12',
+            nights: 3,
+            qty: 15,
+            status: 'Waiting',
+            createdAt: '2026-11-11 09:40'
+          }
+        ],
+        blacklist: [
+          {
+            id: 'BL-01',
+            name: 'Trịnh Quốc Bảo',
+            phone: '0999888777',
+            email: 'blacklist@example.com',
+            reason: 'Vi phạm nội quy khách sạn & nợ phí bồi thường / Rule violation & unpaid damages',
+            addedAt: '2026-10-05'
+          }
+        ],
+        receptionMetrics: {
+          '2026-11-12': { walkins: 3, earlyCheckouts: 1, overstays: 1 }
+        },
+        auditLogs: [
+          { ts: '2026-11-09 14:20', actor: 'Minh Đỗ (Staff)', action: 'RECONFIRM', detail: 'BK-2026-0001 reconfirmed by Nguyễn Thị Lan' },
+          { ts: '2026-11-10 11:20', actor: 'Sơn Vũ (Staff)', action: 'WAITLIST_ADD', detail: 'Added Vũ Thanh Hương (2 Standard, 12/11, 2 nights)' },
+          { ts: '2026-11-11 08:00', actor: 'Manager', action: 'POLICY_INIT', detail: 'Configured Table 9 baseline: overbooking 5%, hold until 18:00, cancel fee 20%' }
+        ]
+      };
+    }
+
+    // =========================================================================
+    // 3. APPLICATION STATE & STORAGE
+    // =========================================================================
+    let state = loadState();
+    let ui = {
+      lang: 'en',
+      role: 'guest',
+      tab: 'booking',
+      wizardStep: 1,
+      search: {
+        checkIn: '2026-11-12',
+        nights: 3,
+        roomType: 'Standard',
+        qty: 15,
+        guests: 30,
+        source: 'Online'
+      },
+      availabilityCheck: null,
+      bookingDraft: {
+        rateTier: 'standard',
+        specialRequest: '',
+        guestName: '',
+        registrantName: '',
+        guestType: 'Individual',
+        phone: '',
+        email: '',
+        address: '',
+        paymentUnit: '',
+        reservationType: 'Guaranteed',
+        guaranteeMethod: 'Credit Card',
+        cardInput: '',
+        depositAmount: 1200000
+      },
+      staffFilter: {
+        query: '',
+        date: '',
+        status: 'ALL',
+        sortBy: 'date'
+      },
+      receptionDate: '2026-11-12',
+      densityRoomType: 'Standard',
+      sc02Result: null,
+      sc02Running: false
+    };
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.roomTypes && parsed.bookings && parsed.policies) {
+            return parsed;
+          }
+        }
+      } catch (e) { /* fall back to seed */ }
+      const seed = buildSeedData();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+      return seed;
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function resetDemoData() {
+      state = buildSeedData();
+      saveState();
+      ui.wizardStep = 1;
+      ui.search = { checkIn: '2026-11-12', nights: 3, roomType: 'Standard', qty: 15, guests: 30, source: 'Online' };
+      ui.availabilityCheck = null;
+      ui.sc02Result = null;
+      runStep2Check(false);
+      showToast(t('resetSuccess'), 'info');
+      render();
+    }
+
+    // =========================================================================
+    // 4. CORE UTILITIES & BUSINESS ENGINE (STEP 2 FORMULA, LOCK, BLACKLIST)
+    // =========================================================================
+    function esc(v) {
+      return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function t(path, vars = {}) {
+      const parts = path.split('.');
+      let cur = I18N[ui.lang];
+      for (const p of parts) {
+        cur = cur && cur[p] !== undefined ? cur[p] : undefined;
+      }
+      if (typeof cur !== 'string') return cur !== undefined ? cur : path;
+      return cur.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? vars[k] : `{${k}}`));
+    }
+
+    function formatVND(num) {
+      return Number(num || 0).toLocaleString(ui.lang === 'vi' ? 'vi-VN' : 'en-US') + ' ₫';
+    }
+
+    function nowStamp() {
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function addDays(dateStr, days) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dt = new Date(Date.UTC(y, m - 1, d + Number(days)));
+      return dt.toISOString().slice(0, 10);
+    }
+
+    function getDatesBetween(checkIn, nights) {
+      const list = [];
+      const count = Math.max(1, Number(nights) || 1);
+      for (let i = 0; i < count; i++) list.push(addDays(checkIn, i));
+      return list;
+    }
+
+    function maskCardNumber(raw) {
+      const digits = String(raw || '').replace(/\D/g, '');
+      if (digits.length >= 4) return `****-${digits.slice(-4)}`;
+      if (String(raw || '').includes('****-')) return String(raw).trim();
+      return '****-0000';
+    }
+
+    function isBookingActiveStatus(status) {
+      return status === 'Confirmed' || status === 'Pending Reconfirm' || status === 'Modified';
+    }
+
+    function getDefaultNightlyStats(roomTypeId, dateStr, total) {
+      // Deterministic baseline outside 11-12..14 so Nov density grid works realistically for all 30 days
+      const dayNum = Number(dateStr.slice(8, 10)) || 15;
+      const occRatio = dayNum % 7 === 5 || dayNum % 7 === 6 ? 0.58 : 0.42;
+      const occupied = Math.floor(total * occRatio);
+      const otherBooked = Math.floor(total * 0.12);
+      return { occupied, otherBooked, uncertain: dayNum % 3 === 0 ? 2 : 1, cancelled: 0, earlyCheckout: 0 };
+    }
+
+    function calculateNightAvailability(targetState, roomTypeId, dateStr, excludeBookingNo = null) {
+      const rt = targetState.roomTypes.find(r => r.id === roomTypeId) || targetState.roomTypes[0];
+      const ledger = (targetState.nightlyLedger[rt.id] && targetState.nightlyLedger[rt.id][dateStr])
+        || getDefaultNightlyStats(rt.id, dateStr, rt.total);
+
+      // Sum active bookings covering this night
+      let activeBookingsQty = 0;
+      for (const b of targetState.bookings) {
+        if (excludeBookingNo && b.bookingNo === excludeBookingNo) continue;
+        if (b.roomType !== rt.id || !isBookingActiveStatus(b.status)) continue;
+        const bEnd = addDays(b.checkIn, b.nights);
+        if (dateStr >= b.checkIn && dateStr < bEnd) {
+          activeBookingsQty += Number(b.qty);
+        }
+      }
+
+      // Active agent allotment quota reserved (BR-09)
+      let allotmentQty = 0;
+      for (const ag of targetState.agents) {
+        if (ag.status === 'Active' && ag.contractType === 'Allotment' && ag.roomType === rt.id) {
+          allotmentQty += Number(ag.quota || 0);
+        }
+      }
+
+      const total = Number(rt.total);
+      const outOfOrder = Number(rt.outOfOrder);
+      const occupied = Number(ledger.occupied);
+      const booked = Number(ledger.otherBooked) + activeBookingsQty + allotmentQty;
+      const T = total - outOfOrder - occupied - booked;
+
+      const uncertain = Number(ledger.uncertain || 0);
+      const cancelled = Number(ledger.cancelled || 0);
+      const earlyCheckout = Number(ledger.earlyCheckout || 0);
+      const D = uncertain + cancelled + earlyCheckout;
+
+      const cap = Math.floor((Number(targetState.policies.overbookingRate) / 100) * total);
+      const effectiveOverbook = Math.min(D, cap);
+      const sellable = T + effectiveOverbook;
+
+      return {
+        date: dateStr,
+        roomType: rt.id,
+        total,
+        outOfOrder,
+        occupied,
+        booked,
+        activeBookingsQty,
+        allotmentQty,
+        T,
+        uncertain,
+        cancelled,
+        earlyCheckout,
+        D,
+        cap,
+        sellable
+      };
+    }
+
+    function checkAvailabilityRange(targetState, roomTypeId, checkIn, nights, qty, excludeBookingNo = null) {
+      const dates = getDatesBetween(checkIn, nights);
+      const breakdown = dates.map(d => {
+        const info = calculateNightAvailability(targetState, roomTypeId, d, excludeBookingNo);
+        const shortfall = Math.max(0, Number(qty) - info.sellable);
+        return { ...info, requested: Number(qty), sufficient: info.sellable >= Number(qty), shortfall };
+      });
+      const available = breakdown.every(n => n.sufficient);
+      const minSellable = Math.min(...breakdown.map(n => n.sellable));
+      const maxShortfall = Math.max(...breakdown.map(n => n.shortfall));
+      return { available, minSellable, maxShortfall, breakdown };
+    }
+
+    function checkBlacklist(targetState, { name, phone, email }) {
+      const n = String(name || '').trim().toLowerCase();
+      const p = String(phone || '').replace(/\s+/g, '');
+      const e = String(email || '').trim().toLowerCase();
+      return targetState.blacklist.find(entry => {
+        const en = entry.name.trim().toLowerCase();
+        const ep = entry.phone.replace(/\s+/g, '');
+        const ee = entry.email.trim().toLowerCase();
+        return (n && n === en) || (p && p === ep) || (e && e === ee);
+      }) || null;
+    }
+
+    function addAuditLog(actor, action, detail) {
+      state.auditLogs.unshift({ ts: nowStamp(), actor, action, detail });
+      if (state.auditLogs.length > 80) state.auditLogs.length = 80;
+    }
+
+    function nextBookingNo() {
+      let maxSeq = 6;
+      for (const b of state.bookings) {
+        const m = String(b.bookingNo).match(/BK-2026-(\d+)/);
+        if (m) maxSeq = Math.max(maxSeq, Number(m[1]));
+      }
+      return `BK-2026-${String(maxSeq + 1).padStart(4, '0')}`;
+    }
+
+    // Async Promise Mutex Lock for transactional booking & SC-02 concurrency test (NFR-02)
+    class AsyncMutex {
+      constructor() { this.queue = Promise.resolve(); }
+      runExclusive(task) {
+        const next = this.queue.then(() => task(), () => task());
+        this.queue = next.catch(() => {});
+        return next;
+      }
+    }
+    const bookingMutex = new AsyncMutex();
+
+    // =========================================================================
+    // 5. USER ACTIONS & MODULE LOGIC
+    // =========================================================================
+    function setLang(lang) {
+      ui.lang = lang;
+      render();
+    }
+
+    function setRole(role) {
+      ui.role = role;
+      if (role === 'guest' || role === 'agent') {
+        ui.tab = 'booking';
+        if (role === 'agent') ui.search.source = 'Agent Allotment';
+        else if (ui.search.source.startsWith('Agent')) ui.search.source = 'Online';
+      } else if (role === 'staff') {
+        ui.tab = 'staff';
+      } else if (role === 'receptionist') {
+        ui.tab = 'reception';
+      } else if (role === 'manager' || role === 'admin') {
+        ui.tab = 'manager';
+      }
+      render();
+    }
+
+    function setTab(tab) {
+      ui.tab = tab;
+      render();
+    }
+
+    function applyPreset(preset) {
+      ui.tab = 'booking';
+      if (preset === 'table9') {
+        ui.search = { checkIn: '2026-11-12', nights: 3, roomType: 'Standard', qty: 15, guests: 30, source: 'Online' };
+        ui.wizardStep = 2;
+        runStep2Check(true);
+      } else if (preset === 'lan') {
+        ui.search = { checkIn: '2026-11-12', nights: 3, roomType: 'Standard', qty: 2, guests: 3, source: 'Online' };
+        ui.bookingDraft.guestName = 'Nguyễn Thị Lan (New)';
+        ui.bookingDraft.registrantName = 'Nguyễn Thị Lan';
+        ui.bookingDraft.phone = '0904998877';
+        ui.bookingDraft.email = 'lan.demo@example.com';
+        ui.bookingDraft.address = 'Hà Nội';
+        ui.wizardStep = 2;
+        runStep2Check(true);
+      } else if (preset === 'blacklist') {
+        ui.search = { checkIn: '2026-11-12', nights: 2, roomType: 'Standard', qty: 1, guests: 1, source: 'Online' };
+        ui.bookingDraft.guestName = 'Trịnh Quốc Bảo';
+        ui.bookingDraft.registrantName = 'Trịnh Quốc Bảo';
+        ui.bookingDraft.phone = '0999888777';
+        ui.bookingDraft.email = 'blacklist@example.com';
+        runStep2Check(false);
+        ui.wizardStep = 4;
+        render();
+      }
+    }
+
+    function runStep2Check(shouldRender = true) {
+      const formEl = document.getElementById('step1-form');
+      if (formEl) {
+        ui.search.checkIn = document.getElementById('inp-checkin').value || '2026-11-12';
+        ui.search.nights = Math.max(1, Math.min(30, Number(document.getElementById('inp-nights').value) || 1));
+        ui.search.roomType = document.getElementById('inp-roomtype').value;
+        ui.search.qty = Math.max(1, Number(document.getElementById('inp-qty').value) || 1);
+        ui.search.guests = Math.max(1, Number(document.getElementById('inp-guests').value) || 1);
+        ui.search.source = document.getElementById('inp-source').value;
+      }
+      ui.availabilityCheck = checkAvailabilityRange(
+        state,
+        ui.search.roomType,
+        ui.search.checkIn,
+        ui.search.nights,
+        ui.search.qty
+      );
+      ui.wizardStep = Math.max(ui.wizardStep, 2);
+      if (shouldRender) render();
+    }
+
+    function applyAlternative(type, value) {
+      if (type === 'prefix') {
+        ui.search.nights = Number(value);
+      } else if (type === 'roomType') {
+        ui.search.roomType = value;
+      } else if (type === 'date') {
+        ui.search.checkIn = value;
+      }
+      runStep2Check(false);
+      if (ui.availabilityCheck.available) {
+        ui.wizardStep = 3;
+      }
+      render();
+    }
+
+    function joinWaitlistFromSearch() {
+      const name = (document.getElementById('wl-name')?.value || '').trim();
+      const phone = (document.getElementById('wl-phone')?.value || '').trim();
+      const email = (document.getElementById('wl-email')?.value || '').trim();
+      if (!name || !phone) {
+        showToast(ui.lang === 'vi' ? 'Vui lòng nhập tên khách và số điện thoại.' : 'Please enter guest name and phone.', 'error');
+        return;
+      }
+      const id = `WL-2026-${String(state.waitlist.length + 1).padStart(2, '0')}`;
+      state.waitlist.unshift({
+        id,
+        guestName: name,
+        phone,
+        email: email || 'no-email@example.com',
+        roomType: ui.search.roomType,
+        checkIn: ui.search.checkIn,
+        nights: ui.search.nights,
+        qty: ui.search.qty,
+        status: 'Waiting',
+        createdAt: nowStamp()
+      });
+      addAuditLog(t(`roles.${ui.role}`), 'WAITLIST_ADD', `${id}: ${name} (${ui.search.qty} ${ui.search.roomType}, ${ui.search.checkIn}, ${ui.search.nights}n)`);
+      saveState();
+      showToast(ui.lang === 'vi' ? `Đã thêm ${name} vào danh sách khách chờ (${id}).` : `Added ${name} to priority waitlist (${id}).`, 'success');
+      render();
+    }
+
+    function selectRateTier(tierId) {
+      ui.bookingDraft.rateTier = tierId;
+      render();
+    }
+
+    function syncDraftInputs() {
+      const getVal = id => document.getElementById(id)?.value;
+      if (document.getElementById('inp-special-req')) ui.bookingDraft.specialRequest = getVal('inp-special-req');
+      if (document.getElementById('inp-guest-name')) ui.bookingDraft.guestName = getVal('inp-guest-name');
+      if (document.getElementById('inp-registrant')) ui.bookingDraft.registrantName = getVal('inp-registrant');
+      if (document.getElementById('inp-guest-type')) ui.bookingDraft.guestType = getVal('inp-guest-type');
+      if (document.getElementById('inp-phone')) ui.bookingDraft.phone = getVal('inp-phone');
+      if (document.getElementById('inp-email')) ui.bookingDraft.email = getVal('inp-email');
+      if (document.getElementById('inp-address')) ui.bookingDraft.address = getVal('inp-address');
+      if (document.getElementById('inp-payment-unit')) ui.bookingDraft.paymentUnit = getVal('inp-payment-unit');
+      if (document.getElementById('inp-res-type')) ui.bookingDraft.reservationType = getVal('inp-res-type');
+      if (document.getElementById('inp-g-method')) ui.bookingDraft.guaranteeMethod = getVal('inp-g-method');
+      if (document.getElementById('inp-card')) ui.bookingDraft.cardInput = getVal('inp-card');
+      if (document.getElementById('inp-deposit')) ui.bookingDraft.depositAmount = Number(getVal('inp-deposit')) || 0;
+    }
+
+    async function submitBooking(forceStaffOverride = false) {
+      syncDraftInputs();
+      const d = ui.bookingDraft;
+      if (!d.guestName.trim() || !d.phone.trim() || !d.email.trim()) {
+        showToast(ui.lang === 'vi' ? 'Vui lòng điền đầy đủ Tên khách, SĐT và Email (FR-02).' : 'Please complete required guest Name, Phone, and Email (FR-02).', 'error');
+        return;
+      }
+
+      const blMatch = checkBlacklist(state, { name: d.guestName, phone: d.phone, email: d.email });
+      if (blMatch && !forceStaffOverride) {
+        showToast(ui.lang === 'vi' ? 'Khách thuộc danh sách đen! Không thể tự đặt (BR-08).' : 'Guest is blacklisted! Self-booking blocked (BR-08).', 'error');
+        render();
+        return;
+      }
+
+      await bookingMutex.runExclusive(async () => {
+        // Re-verify Step 2 availability inside transaction lock (NFR-02)
+        const recheck = checkAvailabilityRange(state, ui.search.roomType, ui.search.checkIn, ui.search.nights, ui.search.qty);
+        if (!recheck.available) {
+          showToast(ui.lang === 'vi' ? 'Phòng vừa hết trong khi xử lý giao dịch! Vui lòng kiểm tra lại.' : 'Availability changed concurrently. Please re-check Step 2.', 'error');
+          ui.availabilityCheck = recheck;
+          ui.wizardStep = 2;
+          render();
+          return;
+        }
+
+        // Check Free Sale contract status if Agent Free Sale
+        if (ui.search.source === 'Agent Free Sale') {
+          const fs = state.agents.find(a => a.contractType === 'Free Sale');
+          if (fs && fs.status !== 'Active') {
+            showToast(ui.lang === 'vi' ? 'Hợp đồng Free Sale hiện đã bị tạm ngừng bởi quản lý (BR-09).' : 'Free Sale contract is currently Stopped by manager (BR-09).', 'error');
+            return;
+          }
+        }
+
+        const rt = state.roomTypes.find(r => r.id === ui.search.roomType);
+        const tierObj = I18N.en.booking.tiers.find(x => x.id === d.rateTier) || I18N.en.booking.tiers[0];
+        const unitPrice = Math.round(rt.basePrice * tierObj.mult);
+        const totalAmount = unitPrice * ui.search.qty * ui.search.nights;
+        const bookingNo = nextBookingNo();
+        const leadDays = d.guestType === 'Group' ? state.policies.reconfirmDaysGroup : state.policies.reconfirmDaysIndiv;
+        const reconfirmDeadline = addDays(ui.search.checkIn, -leadDays);
+        const isGuaranteed = d.reservationType === 'Guaranteed';
+        const cardMasked = (isGuaranteed && d.guaranteeMethod === 'Credit Card') ? maskCardNumber(d.cardInput) : '';
+
+        const newBooking = {
+          bookingNo,
+          guestName: d.guestName.trim(),
+          registrantName: (d.registrantName || d.guestName).trim(),
+          guestType: d.guestType,
+          phone: d.phone.trim(),
+          email: d.email.trim(),
+          address: d.address.trim() || 'N/A',
+          paymentUnit: d.paymentUnit.trim() || (d.guestType === 'Group' ? d.guestName.trim() : 'Individual'),
+          roomType: ui.search.roomType,
+          qty: ui.search.qty,
+          numGuests: ui.search.guests,
+          checkIn: ui.search.checkIn,
+          nights: ui.search.nights,
+          checkOut: addDays(ui.search.checkIn, ui.search.nights),
+          rateTier: d.rateTier,
+          unitPrice,
+          totalAmount,
+          source: ui.search.source,
+          reservationType: d.reservationType,
+          guaranteeMethod: isGuaranteed ? d.guaranteeMethod : 'None',
+          cardMasked,
+          depositAmount: isGuaranteed ? (d.depositAmount || 0) : 0,
+          specialRequest: d.specialRequest.trim(),
+          status: 'Confirmed',
+          reconfirmed: false,
+          reconfirmDeadline,
+          createdAt: nowStamp(),
+          createdBy: t(`roles.${ui.role}`),
+          history: [
+            {
+              action: 'Created',
+              detail: `${ui.search.qty} ${ui.search.roomType} (${ui.search.checkIn} · ${ui.search.nights}n), ${d.reservationType}${cardMasked ? ' ' + cardMasked : ''}`,
+              requestedBy: d.guestName.trim(),
+              staff: t(`roles.${ui.role}`),
+              at: nowStamp()
+            }
+          ]
+        };
+
+        state.bookings.unshift(newBooking);
+        addAuditLog(t(`roles.${ui.role}`), 'BOOKING_CREATE', `${bookingNo}: ${newBooking.guestName}, ${newBooking.qty} ${newBooking.roomType}`);
+        saveState();
+
+        ui.wizardStep = 5;
+        ui.availabilityCheck = checkAvailabilityRange(state, ui.search.roomType, ui.search.checkIn, ui.search.nights, ui.search.qty);
+        render();
+        openEmailVoucherModal(bookingNo);
+      });
+    }
+
+    // Staff Desk Actions
+    function reconfirmBooking(bookingNo) {
+      const b = state.bookings.find(x => x.bookingNo === bookingNo);
+      if (!b) return;
+      b.status = 'Confirmed';
+      b.reconfirmed = true;
+      b.history.push({
+        action: 'Reconfirmed',
+        detail: 'Guest reconfirmed stay prior to arrival (FR-14 / BR-05)',
+        requestedBy: b.guestName,
+        staff: t(`roles.${ui.role}`),
+        at: nowStamp()
+      });
+      addAuditLog(t(`roles.${ui.role}`), 'BOOKING_RECONFIRM', `${bookingNo} reconfirmed`);
+      saveState();
+      showToast(`${bookingNo} ${ui.lang === 'vi' ? 'đã được khẳng định lại.' : 'reconfirmed.'}`, 'success');
+      render();
+    }
+
+    function simulate1800Cutoff() {
+      const targetDate = ui.staffFilter.date || '2026-11-12';
+      let releasedCount = 0;
+      let freedRooms = 0;
+      const releasedNos = [];
+
+      for (const b of state.bookings) {
+        if (b.checkIn === targetDate && b.reservationType === 'Non-guaranteed' && isBookingActiveStatus(b.status)) {
+          b.status = 'Expired (18:00 Cutoff)';
+          b.history.push({
+            action: 'Auto-Released (18:00)',
+            detail: `Non-guaranteed hold expired at ${state.policies.holdUntilTime} cutoff (FR-18 / BR-02). ${b.qty} ${b.roomType} returned to sellable inventory.`,
+            requestedBy: 'System Timer',
+            staff: 'Auto Scheduler',
+            at: nowStamp()
+          });
+          releasedCount++;
+          freedRooms += Number(b.qty);
+          releasedNos.push(`${b.bookingNo} (${b.qty} ${b.roomType})`);
+        }
+      }
+
+      if (releasedCount === 0) {
+        showToast(ui.lang === 'vi'
+          ? `Không có đơn Không đảm bảo nào đến hạn ${state.policies.holdUntilTime} ngày ${targetDate}.`
+          : `No active non-guaranteed bookings expiring at ${state.policies.holdUntilTime} on ${targetDate}.`, 'info');
+        return;
+      }
+
+      addAuditLog('System Timer', 'CUTOFF_1800', `Released ${releasedCount} non-guaranteed bookings (${freedRooms} rooms) on ${targetDate}: ${releasedNos.join(', ')}`);
+      saveState();
+      if (ui.availabilityCheck) runStep2Check(false);
+      render();
+
+      // Check matching waitlist guests (BR-07)
+      const matchingWL = state.waitlist.filter(w => w.status === 'Waiting' && w.checkIn === targetDate);
+      if (matchingWL.length > 0) {
+        showToast(ui.lang === 'vi'
+          ? `Đã giải phóng ${freedRooms} phòng! Có ${matchingWL.length} khách chờ phù hợp cần liên hệ ưu tiên (BR-07).`
+          : `Released ${freedRooms} rooms! ${matchingWL.length} Waitlist guest(s) match ${targetDate} (BR-07).`, 'success');
+      } else {
+        showToast(ui.lang === 'vi'
+          ? `Đã tự động giải phóng ${releasedCount} phiếu (${freedRooms} phòng).`
+          : `Auto-released ${releasedCount} booking(s) (${freedRooms} rooms).`, 'success');
+      }
+    }
+
+    function sendReconfirmReminders() {
+      const pending = state.bookings.filter(b => isBookingActiveStatus(b.status) && !b.reconfirmed);
+      if (pending.length === 0) {
+        showToast(ui.lang === 'vi' ? 'Tất cả đơn hiệu lực đã được khẳng định lại.' : 'All active bookings are already reconfirmed.', 'info');
+        return;
+      }
+      pending.forEach(b => {
+        b.history.push({
+          action: 'Reminder Email Sent',
+          detail: `Sent automated reconfirmation reminder (deadline ${b.reconfirmDeadline}; FR-14)`,
+          requestedBy: 'System Timer',
+          staff: t(`roles.${ui.role}`),
+          at: nowStamp()
+        });
+      });
+      addAuditLog(t(`roles.${ui.role}`), 'RECONFIRM_REMIND', `Sent ${pending.length} reconfirmation email reminders`);
+      saveState();
+      showToast(ui.lang === 'vi'
+        ? `Đã gửi email nhắc khẳng định lại cho ${pending.length} phiếu đặt phòng.`
+        : `Sent reconfirmation reminders for ${pending.length} booking(s).`, 'success');
+      render();
+    }
+
+    function openModifyModal(bookingNo) {
+      const b = state.bookings.find(x => x.bookingNo === bookingNo);
+      if (!b) return;
+      const roomOpts = state.roomTypes.map(r => `<option value="${esc(r.id)}" ${b.roomType === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('');
+      openModal(`
+        <div class="p-5 sm:p-6">
+          <div class="flex items-start justify-between gap-4 pb-4 border-b border-slate-200">
+            <div>
+              <h3 class="text-base font-semibold text-slate-900">${ui.lang === 'vi' ? 'Sửa đổi đặt phòng' : 'Modify Booking'} · <span class="tabular-nums">${esc(b.bookingNo)}</span></h3>
+              <p class="text-xs text-slate-500 mt-0.5">${esc(b.guestName)} · ${ui.lang === 'vi' ? 'Bắt buộc kiểm tra lại công thức Bước 2 (FR-15)' : 'Re-runs Step 2 availability formula before saving (FR-15)'}</p>
+            </div>
+            <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">✕</button>
+          </div>
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">${t('booking.checkIn')}</label>
+              <input id="mod-checkin" type="date" value="${esc(b.checkIn)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm tabular-nums" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">${t('booking.nights')}</label>
+              <input id="mod-nights" type="number" min="1" max="30" value="${esc(b.nights)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm tabular-nums" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">${t('booking.roomType')}</label>
+              <select id="mod-roomtype" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">${roomOpts}</select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">${t('booking.qty')}</label>
+              <input id="mod-qty" type="number" min="1" max="100" value="${esc(b.qty)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm tabular-nums" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">${t('booking.resType')}</label>
+              <select id="mod-restype" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <option value="Guaranteed" ${b.reservationType === 'Guaranteed' ? 'selected' : ''}>Guaranteed</option>
+                <option value="Non-guaranteed" ${b.reservationType === 'Non-guaranteed' ? 'selected' : ''}>Non-guaranteed (18:00)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">${ui.lang === 'vi' ? 'Người yêu cầu thay đổi (BR-06)' : 'Requested By (BR-06)'}</label>
+              <input id="mod-reqby" type="text" value="${esc(b.guestName)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div id="mod-check-feedback" class="mt-4"></div>
+          <div class="mt-5 flex justify-end gap-2 pt-4 border-t border-slate-200">
+            <button type="button" onclick="closeModal()" class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50">${ui.lang === 'vi' ? 'Đóng' : 'Cancel'}</button>
+            <button type="button" onclick="confirmModifyBooking('${esc(b.bookingNo)}')" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">${ui.lang === 'vi' ? 'Kiểm tra Bước 2 & Lưu thay đổi' : 'Verify Step 2 & Save'}</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function confirmModifyBooking(bookingNo) {
+      const b = state.bookings.find(x => x.bookingNo === bookingNo);
+      if (!b) return;
+      const newCheckIn = document.getElementById('mod-checkin').value;
+      const newNights = Math.max(1, Number(document.getElementById('mod-nights').value) || 1);
+      const newRoomType = document.getElementById('mod-roomtype').value;
+      const newQty = Math.max(1, Number(document.getElementById('mod-qty').value) || 1);
+      const newResType = document.getElementById('mod-restype').value;
+      const reqBy = document.getElementById('mod-reqby').value.trim() || b.guestName;
+
+      // Exclude current booking when re-running Step 2 availability check (FR-15)
+      const check = checkAvailabilityRange(state, newRoomType, newCheckIn, newNights, newQty, bookingNo);
+      const fb = document.getElementById('mod-check-feedback');
+      if (!check.available) {
+        const shortNights = check.breakdown.filter(n => !n.sufficient).map(n => `${n.date}: sellable ${n.sellable} < ${newQty}`).join(' · ');
+        fb.innerHTML = `<div class="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-800">
+          <strong>${ui.lang === 'vi' ? 'Không đủ phòng theo công thức Bước 2:' : 'Step 2 Availability Failed:'}</strong> ${esc(shortNights)}
+        </div>`;
+        return;
+      }
+
+      const oldDesc = `${b.qty} ${b.roomType} (${b.checkIn}, ${b.nights}n, ${b.reservationType})`;
+      const rt = state.roomTypes.find(r => r.id === newRoomType);
+      const tierObj = I18N.en.booking.tiers.find(x => x.id === b.rateTier) || I18N.en.booking.tiers[0];
+
+      b.checkIn = newCheckIn;
+      b.nights = newNights;
+      b.checkOut = addDays(newCheckIn, newNights);
+      b.roomType = newRoomType;
+      b.qty = newQty;
+      b.reservationType = newResType;
+      if (newResType === 'Non-guaranteed') b.guaranteeMethod = 'None';
+      else if (b.guaranteeMethod === 'None') b.guaranteeMethod = 'Deposit';
+      b.unitPrice = Math.round(rt.basePrice * tierObj.mult);
+      b.totalAmount = b.unitPrice * newQty * newNights;
+      b.status = 'Modified';
+
+      const newDesc = `${newQty} ${newRoomType} (${newCheckIn}, ${newNights}n, ${newResType})`;
+      b.history.push({
+        action: 'Modified',
+        detail: `${oldDesc} → ${newDesc} [Step 2 min sellable: ${check.minSellable}]`,
+        requestedBy: reqBy,
+        staff: t(`roles.${ui.role}`),
+        at: nowStamp()
+      });
+      addAuditLog(t(`roles.${ui.role}`), 'BOOKING_MODIFY', `${bookingNo}: ${oldDesc} -> ${newDesc}`);
+      saveState();
+      closeModal();
+      showToast(`${bookingNo} ${ui.lang === 'vi' ? 'đã cập nhật sau khi kiểm tra Bước 2.' : 'modified & verified via Step 2.'}`, 'success');
+      render();
+    }
+
+    function openCancelModal(bookingNo) {
+      const b = state.bookings.find(x => x.bookingNo === bookingNo);
+      if (!b) return;
+      const feePercent = state.policies.cancelFeePercent;
+      const feeAmount = b.reservationType === 'Guaranteed' ? Math.round(b.totalAmount * (feePercent / 100)) : 0;
+
+      openModal(`
+        <div class="p-5 sm:p-6">
+          <div class="flex items-start justify-between gap-4 pb-4 border-b border-slate-200">
+            <div>
+              <h3 class="text-base font-semibold text-slate-900">${ui.lang === 'vi' ? 'Hủy phiếu đặt phòng' : 'Cancel Booking'} · <span class="tabular-nums">${esc(b.bookingNo)}</span></h3>
+              <p class="text-xs text-slate-500 mt-0.5">${esc(b.guestName)} · ${esc(b.qty)} ${esc(b.roomType)} (${esc(b.checkIn)} → ${esc(b.checkOut)})</p>
+            </div>
+            <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">✕</button>
+          </div>
+          <div class="mt-4 space-y-3 text-sm">
+            <div class="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
+              <div class="font-semibold">${ui.lang === 'vi' ? 'Thông báo phí hủy (FR-16 / BR-10)' : 'Cancellation Fee Notice (FR-16 / BR-10)'}</div>
+              <div>${ui.lang === 'vi' ? 'Loại đặt phòng:' : 'Reservation Type:'} <strong>${esc(b.reservationType)}</strong> · ${ui.lang === 'vi' ? 'Tổng giá trị:' : 'Total:'} <strong class="tabular-nums">${formatVND(b.totalAmount)}</strong></div>
+              <div>${ui.lang === 'vi' ? `Phí hủy (${b.reservationType === 'Guaranteed' ? feePercent + '%' : '0% - Không đảm bảo'}):` : `Cancellation Fee (${b.reservationType === 'Guaranteed' ? feePercent + '%' : '0% - Non-guaranteed'}):`} <strong class="tabular-nums text-red-700">${formatVND(feeAmount)}</strong></div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">${ui.lang === 'vi' ? 'Lý do hủy *' : 'Cancellation Reason *'}</label>
+              <input id="cancel-reason" type="text" value="${ui.lang === 'vi' ? 'Khách thay đổi lịch trình' : 'Guest changed travel schedule'}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">${ui.lang === 'vi' ? 'Người yêu cầu hủy (BR-06)' : 'Requested By (BR-06)'}</label>
+              <input id="cancel-reqby" type="text" value="${esc(b.guestName)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div class="mt-5 flex justify-end gap-2 pt-4 border-t border-slate-200">
+            <button type="button" onclick="closeModal()" class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50">${ui.lang === 'vi' ? 'Quay lại' : 'Keep Booking'}</button>
+            <button type="button" onclick="confirmCancelBooking('${esc(b.bookingNo)}', ${feeAmount})" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700">${ui.lang === 'vi' ? 'Xác nhận hủy & Giải phóng phòng' : 'Confirm Cancel & Free Rooms'}</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function confirmCancelBooking(bookingNo, feeAmount) {
+      const b = state.bookings.find(x => x.bookingNo === bookingNo);
+      if (!b) return;
+      const reason = document.getElementById('cancel-reason').value.trim() || 'Guest request';
+      const reqBy = document.getElementById('cancel-reqby').value.trim() || b.guestName;
+
+      b.status = 'Cancelled';
+      b.history.push({
+        action: 'Cancelled',
+        detail: `Reason: ${reason}. Cancellation fee: ${formatVND(feeAmount)} (BR-10). Freed ${b.qty} ${b.roomType}.`,
+        requestedBy: reqBy,
+        staff: t(`roles.${ui.role}`),
+        at: nowStamp()
+      });
+      addAuditLog(t(`roles.${ui.role}`), 'BOOKING_CANCEL', `${bookingNo} cancelled (${b.qty} ${b.roomType}); fee ${formatVND(feeAmount)}`);
+
+      // Priority waitlist matching check (BR-07)
+      const matches = state.waitlist.filter(w => w.status === 'Waiting' && w.roomType === b.roomType && w.checkIn === b.checkIn);
+      matches.forEach(w => {
+        const av = checkAvailabilityRange(state, w.roomType, w.checkIn, w.nights, w.qty);
+        if (av.available) w.status = 'Notified';
+      });
+
+      saveState();
+      closeModal();
+      if (ui.availabilityCheck) runStep2Check(false);
+      render();
+
+      if (matches.length > 0) {
+        showToast(ui.lang === 'vi'
+          ? `Đã hủy ${bookingNo}. Có ${matches.length} khách chờ phù hợp (${matches.map(m => m.guestName).join(', ')}) — ưu tiên liên hệ ngay!`
+          : `Cancelled ${bookingNo}. ${matches.length} Waitlist match(es) highlighted for priority contact (BR-07)!`, 'success');
+      } else {
+        showToast(`${bookingNo} ${ui.lang === 'vi' ? 'đã được hủy và giải phóng phòng.' : 'cancelled & rooms released.'}`, 'info');
+      }
+    }
+
+    function convertWaitlistToBooking(wlId) {
+      const w = state.waitlist.find(x => x.id === wlId);
+      if (!w) return;
+      const av = checkAvailabilityRange(state, w.roomType, w.checkIn, w.nights, w.qty);
+      if (!av.available) {
+        showToast(ui.lang === 'vi'
+          ? `Hiện vẫn chưa đủ ${w.qty} phòng ${w.roomType} cho ${w.guestName} (cần giải phóng thêm).`
+          : `Still insufficient rooms (${av.minSellable} < ${w.qty}) to fulfill ${w.guestName}.`, 'error');
+        return;
+      }
+
+      const rt = state.roomTypes.find(r => r.id === w.roomType);
+      const bookingNo = nextBookingNo();
+      const leadDays = state.policies.reconfirmDaysIndiv;
+      const newB = {
+        bookingNo,
+        guestName: w.guestName,
+        registrantName: w.guestName,
+        guestType: w.qty >= 5 ? 'Group' : 'Individual',
+        phone: w.phone,
+        email: w.email,
+        address: 'From Priority Waitlist',
+        paymentUnit: w.guestName,
+        roomType: w.roomType,
+        qty: w.qty,
+        numGuests: w.qty * 2,
+        checkIn: w.checkIn,
+        nights: w.nights,
+        checkOut: addDays(w.checkIn, w.nights),
+        rateTier: 'standard',
+        unitPrice: rt.basePrice,
+        totalAmount: rt.basePrice * w.qty * w.nights,
+        source: 'Waitlist Priority',
+        reservationType: 'Non-guaranteed',
+        guaranteeMethod: 'None',
+        cardMasked: '',
+        depositAmount: 0,
+        specialRequest: `Converted from waitlist ${w.id}`,
+        status: 'Confirmed',
+        reconfirmed: true,
+        reconfirmDeadline: addDays(w.checkIn, -leadDays),
+        createdAt: nowStamp(),
+        createdBy: t(`roles.${ui.role}`),
+        history: [
+          { action: 'Converted from Waitlist', detail: `Waitlist ${w.id} fulfilled (${w.qty} ${w.roomType}, ${w.checkIn})`, requestedBy: w.guestName, staff: t(`roles.${ui.role}`), at: nowStamp() }
+        ]
+      };
+      w.status = 'Converted';
+      state.bookings.unshift(newB);
+      addAuditLog(t(`roles.${ui.role}`), 'WAITLIST_CONVERT', `Converted ${w.id} (${w.guestName}) -> ${bookingNo}`);
+      saveState();
+      render();
+      openEmailVoucherModal(bookingNo);
+    }
+
+    function addBlacklistEntry() {
+      const name = (document.getElementById('bl-new-name')?.value || '').trim();
+      const phone = (document.getElementById('bl-new-phone')?.value || '').trim();
+      const email = (document.getElementById('bl-new-email')?.value || '').trim();
+      const reason = (document.getElementById('bl-new-reason')?.value || '').trim();
+      if (!name || !reason) {
+        showToast(ui.lang === 'vi' ? 'Vui lòng nhập tên và lý do.' : 'Name and reason required.', 'error');
+        return;
+      }
+      const id = `BL-${String(state.blacklist.length + 1).padStart(2, '0')}`;
+      state.blacklist.unshift({ id, name, phone, email, reason, addedAt: nowStamp().slice(0, 10) });
+      addAuditLog(t(`roles.${ui.role}`), 'BLACKLIST_ADD', `Added ${name} (${reason})`);
+      saveState();
+      render();
+    }
+
+    function removeBlacklistEntry(id) {
+      const target = state.blacklist.find(b => b.id === id);
+      state.blacklist = state.blacklist.filter(b => b.id !== id);
+      if (target) addAuditLog(t(`roles.${ui.role}`), 'BLACKLIST_REMOVE', `Removed ${target.name}`);
+      saveState();
+      render();
+    }
+
+    // Reception Actions (FR-18, FR-19)
+    function logReceptionEvent(type, bookingNo = null) {
+      const dateStr = ui.receptionDate;
+      if (!state.receptionMetrics[dateStr]) {
+        state.receptionMetrics[dateStr] = { walkins: 0, earlyCheckouts: 0, overstays: 0 };
+      }
+      if (type === 'walkin') {
+        state.receptionMetrics[dateStr].walkins++;
+        addAuditLog(t(`roles.${ui.role}`), 'RECEPTION_WALKIN', `Logged 1 walk-in guest on ${dateStr}`);
+      } else if (type === 'early') {
+        state.receptionMetrics[dateStr].earlyCheckouts++;
+        if (state.nightlyLedger.Standard[dateStr]) {
+          state.nightlyLedger.Standard[dateStr].earlyCheckout++;
+        }
+        addAuditLog(t(`roles.${ui.role}`), 'RECEPTION_EARLY_CHECKOUT', `Logged early check-out on ${dateStr} (+1 adjustment in Step 2 formula)`);
+      } else if (type === 'overstay') {
+        state.receptionMetrics[dateStr].overstays++;
+        addAuditLog(t(`roles.${ui.role}`), 'RECEPTION_OVERSTAY', `Logged overstay guest on ${dateStr}`);
+      } else if (type === 'noshow' && bookingNo) {
+        const b = state.bookings.find(x => x.bookingNo === bookingNo);
+        if (b && isBookingActiveStatus(b.status)) {
+          b.status = 'No-Show';
+          b.history.push({
+            action: 'No-Show',
+            detail: b.reservationType === 'Guaranteed'
+              ? `Marked No-Show; hotel retains compensation per BR-01 / FR-18.`
+              : `Marked No-Show (Non-guaranteed).`,
+            requestedBy: 'Reception',
+            staff: t(`roles.${ui.role}`),
+            at: nowStamp()
+          });
+          addAuditLog(t(`roles.${ui.role}`), 'RECEPTION_NOSHOW', `Marked ${bookingNo} (${b.guestName}) as No-Show`);
+        }
+      }
+      saveState();
+      render();
+    }
+
+    // Manager & Admin Actions
+    function saveRoomInventory() {
+      state.roomTypes.forEach(rt => {
+        const tot = Number(document.getElementById(`inv-total-${rt.id}`)?.value);
+        const ooo = Number(document.getElementById(`inv-ooo-${rt.id}`)?.value);
+        const price = Number(document.getElementById(`inv-price-${rt.id}`)?.value);
+        if (!Number.isNaN(tot) && tot >= 1) rt.total = tot;
+        if (!Number.isNaN(ooo) && ooo >= 0 && ooo <= rt.total) rt.outOfOrder = ooo;
+        if (!Number.isNaN(price) && price >= 0) rt.basePrice = price;
+      });
+      addAuditLog(t(`roles.${ui.role}`), 'INVENTORY_UPDATE', `Updated room inventory & prices`);
+      saveState();
+      if (ui.availabilityCheck) runStep2Check(false);
+      showToast(ui.lang === 'vi' ? 'Đã lưu quỹ phòng & cập nhật Bước 2.' : 'Room inventory saved & Step 2 recalculated.', 'success');
+      render();
+    }
+
+    function savePolicySettings() {
+      const p = state.policies;
+      p.overbookingRate = Math.max(0, Math.min(50, Number(document.getElementById('pol-overbook').value) || 0));
+      p.holdUntilTime = document.getElementById('pol-hold').value || '18:00';
+      p.reconfirmDaysGroup = Math.max(1, Number(document.getElementById('pol-reconf-group').value) || 15);
+      p.reconfirmDaysIndiv = Math.max(1, Number(document.getElementById('pol-reconf-indiv').value) || 3);
+      p.cancelFeePercent = Math.max(0, Math.min(100, Number(document.getElementById('pol-cancel-fee').value) || 0));
+      addAuditLog(t(`roles.${ui.role}`), 'POLICY_UPDATE', `Overbooking=${p.overbookingRate}%, Hold=${p.holdUntilTime}, Reconfirm=${p.reconfirmDaysGroup}d/${p.reconfirmDaysIndiv}d, CancelFee=${p.cancelFeePercent}%`);
+      saveState();
+      if (ui.availabilityCheck) runStep2Check(false);
+      showToast(ui.lang === 'vi' ? 'Đã cập nhật chính sách đặt phòng.' : 'Booking policies saved.', 'success');
+      render();
+    }
+
+    function toggleAgentStatus(agentId) {
+      const ag = state.agents.find(a => a.id === agentId);
+      if (!ag) return;
+      ag.status = ag.status === 'Active' ? 'Stopped' : 'Active';
+      addAuditLog(t(`roles.${ui.role}`), 'AGENT_STATUS', `${ag.name} (${ag.contractType}) -> ${ag.status}`);
+      saveState();
+      render();
+    }
+
+    // SC-02 Concurrency Integrity Test (50 simultaneous requests through AsyncMutex)
+    async function runConcurrencyTest50() {
+      if (ui.sc02Running) return;
+      ui.sc02Running = true;
+      render();
+
+      const targetDate = '2026-11-14';
+      const targetRoomType = 'Standard';
+      const initialAvail = calculateNightAvailability(state, targetRoomType, targetDate);
+      const initialSellable = Math.max(0, initialAvail.sellable);
+
+      // Cloned sandbox state so 50 synthetic bookings prove transactional safety without cluttering main demo bookings
+      const testState = JSON.parse(JSON.stringify(state));
+      const testLock = new AsyncMutex();
+      const t0 = performance.now();
+
+      const requests = Array.from({ length: 50 }, (_, idx) => {
+        const reqNum = idx + 1;
+        return testLock.runExclusive(async () => {
+          // Simulate tiny microtask yield to stress concurrent ordering
+          await Promise.resolve();
+          const check = checkAvailabilityRange(testState, targetRoomType, targetDate, 1, 1);
+          if (check.available) {
+            testState.bookings.push({
+              bookingNo: `CONC-${reqNum}`,
+              roomType: targetRoomType,
+              qty: 1,
+              checkIn: targetDate,
+              nights: 1,
+              status: 'Confirmed'
+            });
+            return { reqNum, accepted: true, remainingAfter: check.minSellable - 1 };
+          }
+          return { reqNum, accepted: false, remainingAfter: check.minSellable };
+        });
+      });
+
+      const outcomes = await Promise.all(requests);
+      const elapsedMs = Math.round((performance.now() - t0) * 100) / 100;
+      const acceptedCount = outcomes.filter(o => o.accepted).length;
+      const rejectedCount = outcomes.filter(o => !o.accepted).length;
+      const finalAvail = calculateNightAvailability(testState, targetRoomType, targetDate);
+      const oversold = finalAvail.sellable < 0 || acceptedCount > initialSellable;
+
+      ui.sc02Result = {
+        targetDate,
+        targetRoomType,
+        initialSellable,
+        acceptedCount,
+        rejectedCount,
+        finalSellable: finalAvail.sellable,
+        oversold,
+        elapsedMs,
+        passed: !oversold && acceptedCount === initialSellable && elapsedMs <= 3000,
+        outcomes
+      };
+      ui.sc02Running = false;
+      addAuditLog('System Verification', 'SC02_CONCURRENCY', `50 concurrent requests on ${targetDate} ${targetRoomType}: ${acceptedCount} accepted, ${rejectedCount} rejected, 0 oversold (${elapsedMs} ms)`);
+      saveState();
+      render();
+    }
+
+    // =========================================================================
+    // 6. MODALS & TOASTS
+    // =========================================================================
+    function openModal(html) {
+      const root = document.getElementById('modal-root');
+      document.getElementById('modal-panel').innerHTML = html;
+      root.classList.remove('hidden');
+      root.classList.add('flex');
+    }
+
+    function closeModal() {
+      const root = document.getElementById('modal-root');
+      root.classList.add('hidden');
+      root.classList.remove('flex');
+    }
+
+    function openEmailVoucherModal(bookingNo) {
+      const b = state.bookings.find(x => x.bookingNo === bookingNo);
+      if (!b) return;
+      const isVi = ui.lang === 'vi';
+      openModal(`
+        <div id="printable-voucher" class="p-6 sm:p-8">
+          <div class="flex items-start justify-between gap-4 pb-4 border-b border-slate-200">
+            <div>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                ${isVi ? 'Thư xác nhận tự động (FR-12)' : 'Automated Confirmation Email (FR-12)'}
+              </span>
+              <h3 class="text-lg font-bold text-slate-900 mt-2">${isVi ? 'Phiếu Xác Nhận Đặt Phòng' : 'Hotel Booking Confirmation'}</h3>
+              <p class="text-xs text-slate-500 mt-0.5">To: ${esc(b.email)} · ${esc(b.createdAt)}</p>
+            </div>
+            <button type="button" onclick="closeModal()" class="no-print text-slate-400 hover:text-slate-600 p-1 rounded-lg">✕</button>
+          </div>
+
+          <div class="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+            <div>
+              <div class="text-slate-500">${isVi ? 'Số phiếu đặt phòng' : 'Booking Number'}</div>
+              <div class="font-bold text-slate-900 text-sm tabular-nums mt-0.5">${esc(b.bookingNo)}</div>
+            </div>
+            <div>
+              <div class="text-slate-500">${isVi ? 'Trạng thái' : 'Status'}</div>
+              <div class="font-semibold text-blue-700 mt-0.5">${esc(t(`statusLabels.${b.status}`))}</div>
+            </div>
+            <div>
+              <div class="text-slate-500">${isVi ? 'Hạn khẳng định lại (BR-05)' : 'Reconfirm Deadline (BR-05)'}</div>
+              <div class="font-semibold text-slate-900 tabular-nums mt-0.5">${esc(b.reconfirmDeadline)}</div>
+            </div>
+          </div>
+
+          <dl class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <div><dt class="text-xs text-slate-500">${isVi ? 'Tên khách / Đoàn' : 'Guest / Group Name'}</dt><dd class="font-medium text-slate-900">${esc(b.guestName)} (${esc(b.guestType)})</dd></div>
+            <div><dt class="text-xs text-slate-500">${isVi ? 'Liên hệ & Địa chỉ' : 'Phone & Address'}</dt><dd class="text-slate-800">${esc(b.phone)} · ${esc(b.address)}</dd></div>
+            <div><dt class="text-xs text-slate-500">${isVi ? 'Loại & Số lượng phòng' : 'Room Type & Quantity'}</dt><dd class="font-medium text-slate-900 tabular-nums">${esc(b.qty)} × ${esc(b.roomType)} (${esc(b.numGuests)} ${isVi ? 'khách' : 'guests'})</dd></div>
+            <div><dt class="text-xs text-slate-500">${isVi ? 'Ngày đến – Ngày đi' : 'Check-in – Check-out'}</dt><dd class="font-medium text-slate-900 tabular-nums">${esc(b.checkIn)} → ${esc(b.checkOut)} (${esc(b.nights)} ${isVi ? 'đêm' : 'nights'})</dd></div>
+            <div><dt class="text-xs text-slate-500">${isVi ? 'Giá phòng & Tổng dự kiến' : 'Unit Rate & Total Estimate'}</dt><dd class="font-semibold text-slate-900 tabular-nums">${formatVND(b.unitPrice)} / ${isVi ? 'đêm' : 'night'} · ${formatVND(b.totalAmount)}</dd></div>
+            <div><dt class="text-xs text-slate-500">${isVi ? 'Loại & Hình thức đảm bảo' : 'Guarantee & Payment'}</dt><dd class="text-slate-800">${esc(b.reservationType)}${b.guaranteeMethod !== 'None' ? ' · ' + esc(b.guaranteeMethod) : ' (Hold until ' + esc(state.policies.holdUntilTime) + ')'}${b.cardMasked ? ' (' + esc(b.cardMasked) + ')' : ''}</dd></div>
+            <div class="sm:col-span-2"><dt class="text-xs text-slate-500">${isVi ? 'Yêu cầu đặc biệt & Nguồn' : 'Special Requests & Source'}</dt><dd class="text-slate-800">${esc(b.specialRequest || '—')} · [${esc(b.source)}]</dd></div>
+          </dl>
+
+          <div class="no-print mt-6 pt-4 border-t border-slate-200 flex justify-end gap-2">
+            <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50">
+              ${isVi ? 'In phiếu xác nhận' : 'Print Confirmation'}
+            </button>
+            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+              ${isVi ? 'Đóng' : 'Done'}
+            </button>
+          </div>
+        </div>
+      `);
+    }
+
+    function openHistoryModal(bookingNo) {
+      const b = state.bookings.find(x => x.bookingNo === bookingNo);
+      if (!b) return;
+      const isVi = ui.lang === 'vi';
+      const rows = (b.history || []).map(h => `
+        <li class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-900">${esc(h.action)}</span>
+            <span class="text-slate-500 tabular-nums">${esc(h.at)}</span>
+          </div>
+          <p class="text-slate-700">${esc(h.detail)}</p>
+          <div class="text-slate-500">${isVi ? 'Người yêu cầu:' : 'Requested by:'} <strong>${esc(h.requestedBy)}</strong> · ${isVi ? 'Nhân viên ghi nhận:' : 'Recorded by:'} <strong>${esc(h.staff)}</strong></div>
+        </li>
+      `).join('');
+      openModal(`
+        <div class="p-5 sm:p-6">
+          <div class="flex items-start justify-between gap-4 pb-4 border-b border-slate-200">
+            <div>
+              <h3 class="text-base font-semibold text-slate-900">${isVi ? 'Lịch sử thay đổi & Kiểm toán' : 'Booking Change & Audit History'} · <span class="tabular-nums">${esc(b.bookingNo)}</span></h3>
+              <p class="text-xs text-slate-500 mt-0.5">${esc(b.guestName)} (FR-17 / BR-06 / NFR-04)</p>
+            </div>
+            <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">✕</button>
+          </div>
+          <ul class="mt-4 space-y-2.5 max-h-[60vh] overflow-y-auto">${rows}</ul>
+          <div class="mt-5 pt-4 border-t border-slate-200 flex justify-end">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-slate-800 hover:bg-slate-900">${isVi ? 'Đóng' : 'Close'}</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const colors = {
+        success: 'bg-emerald-900 text-white border-emerald-700',
+        error: 'bg-red-900 text-white border-red-700',
+        info: 'bg-slate-900 text-white border-slate-700'
+      };
+      const el = document.createElement('div');
+      el.className = `pointer-events-auto px-4 py-3 rounded-xl border shadow-lg text-xs font-medium ${colors[type] || colors.info}`;
+      el.textContent = message;
+      container.appendChild(el);
+      setTimeout(() => { el.remove(); }, 4500);
+    }
+
+    // =========================================================================
+    // 7. VIEW RENDERERS
+    // =========================================================================
+    function statusBadge(status) {
+      const map = {
+        'Confirmed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        'Pending Reconfirm': 'bg-amber-50 text-amber-800 border-amber-200',
+        'Modified': 'bg-blue-50 text-blue-700 border-blue-200',
+        'Cancelled': 'bg-slate-100 text-slate-600 border-slate-200',
+        'Expired (18:00 Cutoff)': 'bg-orange-50 text-orange-800 border-orange-200',
+        'No-Show': 'bg-red-50 text-red-700 border-red-200',
+        'Waiting': 'bg-amber-50 text-amber-800 border-amber-200',
+        'Notified': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        'Converted': 'bg-blue-50 text-blue-700 border-blue-200'
+      };
+      const cls = map[status] || 'bg-slate-100 text-slate-700 border-slate-200';
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cls}">${esc(t(`statusLabels.${status}`) || status)}</span>`;
+    }
+
+    function renderNavigation() {
+      document.getElementById('app-title').textContent = t('appTitle');
+      document.getElementById('app-subtitle').textContent = t('appSubtitle');
+      document.getElementById('lbl-role').textContent = t('roleLabel');
+      document.getElementById('txt-reset-demo').textContent = t('resetDemo');
+
+      const btnVi = document.getElementById('btn-lang-vi');
+      const btnEn = document.getElementById('btn-lang-en');
+      btnVi.className = `px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${ui.lang === 'vi' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'}`;
+      btnEn.className = `px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${ui.lang === 'en' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'}`;
+
+      const roleSel = document.getElementById('role-switcher');
+      Array.from(roleSel.options).forEach(opt => {
+        opt.textContent = t(`roles.${opt.value}`);
+      });
+      roleSel.value = ui.role;
+
+      document.getElementById('role-context-card').innerHTML = `
+        <div class="text-xs font-semibold text-slate-900">${esc(t(`roles.${ui.role}`))}</div>
+        <p class="text-xs text-slate-600 mt-1 leading-relaxed">${esc(t(`roleDesc.${ui.role}`))}</p>
+      `;
+
+      const tabs = [
+        { id: 'booking', label: t('nav.booking'), roles: ['guest', 'agent', 'staff', 'manager', 'admin'] },
+        { id: 'staff', label: t('nav.staff'), roles: ['staff', 'manager', 'admin'] },
+        { id: 'reception', label: t('nav.reception'), roles: ['receptionist', 'manager', 'admin'] },
+        { id: 'manager', label: t('nav.manager'), roles: ['manager', 'admin'] }
+      ];
+
+      document.getElementById('main-nav').innerHTML = tabs.map(tb => {
+        const active = ui.tab === tb.id;
+        const recommended = tb.roles.includes(ui.role);
+        return `
+          <button type="button" onclick="setTab('${tb.id}')"
+            class="shrink-0 lg:w-full text-left px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center justify-between gap-2 ${
+              active
+                ? 'bg-blue-600 text-white'
+                : recommended
+                  ? 'text-slate-700 hover:bg-slate-100'
+                  : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'
+            }">
+            <span>${esc(tb.label)}</span>
+          </button>
+        `;
+      }).join('');
+
+      document.getElementById('scope-note').innerHTML = `
+        <div class="font-semibold text-slate-700">${esc(t('scopeGuardrailTitle'))}</div>
+        <p>${esc(t('scopeIncluded'))}</p>
+        <p class="text-slate-400">${esc(t('scopeExcluded'))}</p>
+      `;
+    }
+
+    function renderBookingFlow() {
+      const isVi = ui.lang === 'vi';
+      const steps = t('steps');
+      const s = ui.search;
+      const d = ui.bookingDraft;
+
+      // Stepper bar (SC-04: <= 5 steps)
+      const stepperHtml = `
+        <ol class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-5">
+          ${steps.map((label, idx) => {
+            const num = idx + 1;
+            const current = ui.wizardStep === num;
+            const done = ui.wizardStep > num;
+            return `
+              <li class="px-3 py-2 rounded-lg border text-xs font-medium flex items-center gap-2 ${
+                current ? 'bg-blue-50 border-blue-300 text-blue-800'
+                : done ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-white border-slate-200 text-slate-500'
+              }">
+                <span class="w-5 h-5 rounded-full inline-flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                  current ? 'bg-blue-600 text-white' : done ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
+                }">${done ? '✓' : num}</span>
+                <span class="truncate">${esc(label.replace(/^\d+\.\s*/, ''))}</span>
+              </li>
+            `;
+          }).join('')}
+        </ol>
+      `;
+
+      // Presets bar
+      const presetsHtml = `
+        <div class="mb-5 p-3 rounded-xl bg-white border border-slate-200 flex flex-wrap items-center gap-2">
+          <span class="text-xs font-semibold text-slate-600 mr-1">${esc(t('presets.title'))}</span>
+          <button type="button" onclick="applyPreset('table9')" class="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200">${esc(t('presets.table9'))}</button>
+          <button type="button" onclick="applyPreset('lan')" class="px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200">${esc(t('presets.lan'))}</button>
+          <button type="button" onclick="applyPreset('blacklist')" class="px-2.5 py-1 rounded-md text-xs font-medium bg-red-50 hover:bg-red-100 text-red-800 border border-red-200">${esc(t('presets.blacklist'))}</button>
+        </div>
+      `;
+
+      // Agent Allotment quick banner when in agent role
+      const agentBanner = ui.role === 'agent' ? `
+        <div class="mb-5 p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <strong>${isVi ? 'Quỹ phòng Đại lý (FR-03 / BR-09):' : 'Travel Agent Contracts (FR-03 / BR-09):'}</strong>
+            ${state.agents.map(a => `${esc(a.name)} [${esc(a.contractType)} · ${esc(a.roomType)} · ${a.contractType === 'Allotment' ? a.quota + ' rooms' : 'Unlimited'} · ${esc(a.status)}]`).join(' | ')}
+          </div>
+        </div>
+      ` : '';
+
+      // Step 1 Search Form
+      const roomOpts = state.roomTypes.map(r =>
+        `<option value="${esc(r.id)}" ${s.roomType === r.id ? 'selected' : ''}>${esc(r.name)} · ${formatVND(r.basePrice)}</option>`
+      ).join('');
+      const sources = ['Online', 'Phone', 'Email', 'Walk-in', 'Fax', 'Agent Allotment', 'Agent Free Sale'];
+      const sourceOpts = sources.map(src => `<option value="${esc(src)}" ${s.source === src ? 'selected' : ''}>${esc(src)}</option>`).join('');
+
+      const step1Html = `
+        <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 mb-5">
+          <form id="step1-form" onsubmit="event.preventDefault(); runStep2Check(true);" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-12 gap-3 items-end">
+            <div class="lg:col-span-2">
+              <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.checkIn'))}</label>
+              <input id="inp-checkin" type="date" value="${esc(s.checkIn)}" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm tabular-nums" />
+            </div>
+            <div class="lg:col-span-1">
+              <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.nights'))}</label>
+              <input id="inp-nights" type="number" min="1" max="30" value="${esc(s.nights)}" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm tabular-nums" />
+            </div>
+            <div class="col-span-2 sm:col-span-1 lg:col-span-3">
+              <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.roomType'))}</label>
+              <select id="inp-roomtype" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm">${roomOpts}</select>
+            </div>
+            <div class="lg:col-span-2">
+              <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.qty'))}</label>
+              <input id="inp-qty" type="number" min="1" max="100" value="${esc(s.qty)}" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm tabular-nums" />
+            </div>
+            <div class="lg:col-span-2">
+              <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.guests'))}</label>
+              <input id="inp-guests" type="number" min="1" max="300" value="${esc(s.guests)}" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm tabular-nums" />
+            </div>
+            <div class="lg:col-span-2">
+              <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.source'))}</label>
+              <select id="inp-source" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm">${sourceOpts}</select>
+            </div>
+            <div class="col-span-2 sm:col-span-3 lg:col-span-12 flex justify-end pt-1">
+              <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                ${esc(t('booking.btnCheck'))}
+              </button>
+            </div>
+          </form>
+        </section>
+      `;
+
+      // Step 2 Availability Breakdown Table
+      let step2Html = '';
+      const av = ui.availabilityCheck;
+      if (av) {
+        const rows = av.breakdown.map((n, idx) => `
+          <tr class="${n.sufficient ? '' : 'bg-red-50/70'} border-t border-slate-200 text-xs sm:text-sm tabular-nums">
+            <td class="px-3 py-2.5 font-medium text-slate-900 whitespace-nowrap">${isVi ? 'Đêm' : 'Night'} ${idx + 1} (${esc(n.date)})</td>
+            <td class="px-2.5 py-2.5 text-right">${n.total}</td>
+            <td class="px-2.5 py-2.5 text-right text-slate-500">${n.outOfOrder}</td>
+            <td class="px-2.5 py-2.5 text-right text-slate-500">${n.occupied}</td>
+            <td class="px-2.5 py-2.5 text-right text-slate-500" title="Other: ${n.booked - n.activeBookingsQty - n.allotmentQty}, Bookings: ${n.activeBookingsQty}, Allotment: ${n.allotmentQty}">${n.booked}</td>
+            <td class="px-2.5 py-2.5 text-right font-semibold text-slate-900">${n.T}</td>
+            <td class="px-2.5 py-2.5 text-right text-blue-700" title="Uncertain=${n.uncertain}, Cancel=${n.cancelled}, Early=${n.earlyCheckout}">${n.D} <span class="text-[11px] text-slate-400">(${n.uncertain}+${n.cancelled}+${n.earlyCheckout})</span></td>
+            <td class="px-2.5 py-2.5 text-right text-slate-600">${n.cap}</td>
+            <td class="px-2.5 py-2.5 text-right font-bold text-slate-900">${n.sellable}</td>
+            <td class="px-2.5 py-2.5 text-right font-medium">${n.requested}</td>
+            <td class="px-3 py-2.5 text-right whitespace-nowrap">
+              ${n.sufficient
+                ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">${esc(t('booking.sufficient'))}</span>`
+                : `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">${esc(t('booking.shortBy', { n: n.shortfall }))}</span>`
+              }
+            </td>
+          </tr>
+        `).join('');
+
+        let branchHtml = '';
+        if (av.available) {
+          branchHtml = `
+            <div class="mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-wrap items-center justify-between gap-3">
+              <div class="text-xs sm:text-sm text-emerald-900 font-medium">${esc(t('booking.branchAccept'))}</div>
+              ${ui.wizardStep < 3 ? `<button type="button" onclick="ui.wizardStep=3; render();" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium bg-emerald-700 hover:bg-emerald-800 text-white">${esc(t('booking.continueStep3'))}</button>` : ''}
+            </div>
+          `;
+        } else {
+          // Compute real alternatives (FR-08)
+          const firstShortIdx = av.breakdown.findIndex(n => !n.sufficient);
+          const prefixBtn = firstShortIdx > 0
+            ? `<button type="button" onclick="applyAlternative('prefix', ${firstShortIdx})" class="px-3 py-2 rounded-lg text-xs font-medium bg-white border border-slate-300 hover:bg-slate-50 text-slate-800">${esc(t('booking.altBookPrefix', { n: firstShortIdx }))}</button>`
+            : '';
+
+          const altTypes = state.roomTypes.filter(r => r.id !== s.roomType).map(r => {
+            const c = checkAvailabilityRange(state, r.id, s.checkIn, s.nights, s.qty);
+            return c.available ? `<button type="button" onclick="applyAlternative('roomType', '${esc(r.id)}')" class="px-3 py-2 rounded-lg text-xs font-medium bg-white border border-slate-300 hover:bg-slate-50 text-slate-800">${esc(t('booking.altSwitchRoom', { type: r.name, n: c.minSellable }))}</button>` : '';
+          }).join('');
+
+          const nextDate = addDays(s.checkIn, s.nights);
+          const nextDateCheck = checkAvailabilityRange(state, s.roomType, nextDate, s.nights, s.qty);
+          const nextDateBtn = nextDateCheck.available
+            ? `<button type="button" onclick="applyAlternative('date', '${esc(nextDate)}')" class="px-3 py-2 rounded-lg text-xs font-medium bg-white border border-slate-300 hover:bg-slate-50 text-slate-800">${esc(t('booking.altNextDate', { date: nextDate }))}</button>`
+            : '';
+
+          branchHtml = `
+            <div class="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-3">
+              <div class="text-xs sm:text-sm font-semibold text-amber-900">${esc(t('booking.branchReject'))}</div>
+              <div class="flex flex-wrap gap-2">${prefixBtn}${altTypes}${nextDateBtn}</div>
+              <div class="pt-3 border-t border-amber-200/80">
+                <div class="text-xs font-semibold text-slate-800 mb-2">${esc(t('booking.joinWaitlistTitle'))}</div>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                  <input id="wl-name" type="text" placeholder="${esc(t('booking.wlNamePlaceholder'))}" value="${esc(d.guestName)}" class="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs" />
+                  <input id="wl-phone" type="text" placeholder="${esc(t('booking.wlPhonePlaceholder'))}" value="${esc(d.phone)}" class="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs" />
+                  <input id="wl-email" type="email" placeholder="${esc(t('booking.wlEmailPlaceholder'))}" value="${esc(d.email)}" class="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs" />
+                  <button type="button" onclick="joinWaitlistFromSearch()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-700 hover:bg-amber-800 text-white">${esc(t('booking.joinWaitlistBtn'))}</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        step2Html = `
+          <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 mb-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h3 class="text-sm font-semibold text-slate-900">${esc(t('booking.formulaTitle'))}</h3>
+              <span class="text-[11px] font-mono text-slate-500">${esc(t('booking.formulaLegend'))}</span>
+            </div>
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                  <tr>
+                    <th class="px-3 py-2">${esc(t('booking.nightCol'))}</th>
+                    <th class="px-2.5 py-2 text-right">${esc(t('booking.totalCol'))}</th>
+                    <th class="px-2.5 py-2 text-right">${esc(t('booking.oooCol'))}</th>
+                    <th class="px-2.5 py-2 text-right">${esc(t('booking.occCol'))}</th>
+                    <th class="px-2.5 py-2 text-right">${esc(t('booking.bookedCol'))}</th>
+                    <th class="px-2.5 py-2 text-right">${esc(t('booking.tCol'))}</th>
+                    <th class="px-2.5 py-2 text-right">${esc(t('booking.dCol'))}</th>
+                    <th class="px-2.5 py-2 text-right">${esc(t('booking.capCol'))} (${state.policies.overbookingRate}%)</th>
+                    <th class="px-2.5 py-2 text-right">${esc(t('booking.sellableCol'))}</th>
+                    <th class="px-2.5 py-2 text-right">${esc(t('booking.reqCol'))}</th>
+                    <th class="px-3 py-2 text-right">${esc(t('booking.resultCol'))}</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+            ${branchHtml}
+          </section>
+        `;
+      }
+
+      // Step 3 Rate Tier Selection
+      let step3Html = '';
+      if (av && av.available && ui.wizardStep >= 3) {
+        const rt = state.roomTypes.find(r => r.id === s.roomType);
+        const tiers = t('booking.tiers');
+        step3Html = `
+          <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 mb-5">
+            <h3 class="text-sm font-semibold text-slate-900 mb-3">${esc(t('booking.rateTitle'))}</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              ${tiers.map(tier => {
+                const selected = d.rateTier === tier.id;
+                const price = Math.round(rt.basePrice * tier.mult);
+                return `
+                  <button type="button" onclick="selectRateTier('${esc(tier.id)}')" class="text-left p-3.5 rounded-xl border transition-colors ${selected ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-slate-200 hover:border-slate-300'}">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-xs font-semibold text-slate-900">${esc(tier.name)}</span>
+                      <span class="text-xs font-bold text-blue-700 tabular-nums">${formatVND(price)}</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">${esc(tier.desc)}</p>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+            <div class="mt-3">
+              <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.specialReq'))}</label>
+              <input id="inp-special-req" type="text" value="${esc(d.specialRequest)}" oninput="ui.bookingDraft.specialRequest=this.value" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            ${ui.wizardStep === 3 ? `
+              <div class="mt-4 flex justify-end">
+                <button type="button" onclick="ui.wizardStep=4; render();" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">${esc(t('booking.continueStep4'))}</button>
+              </div>
+            ` : ''}
+          </section>
+        `;
+      }
+
+      // Step 4 Guest Form, Blacklist Check & Guarantee
+      let step4Html = '';
+      if (av && av.available && ui.wizardStep >= 4) {
+        const blMatch = checkBlacklist(state, { name: d.guestName, phone: d.phone, email: d.email });
+        const canOverrideBL = ui.role === 'staff' || ui.role === 'manager' || ui.role === 'admin';
+        const isGuaranteed = d.reservationType === 'Guaranteed';
+
+        step4Html = `
+          <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
+            <h3 class="text-sm font-semibold text-slate-900 mb-3">${esc(t('booking.guestTitle'))}</h3>
+
+            ${blMatch ? `
+              <div class="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-300 text-xs text-red-900 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div class="font-bold">${esc(t('booking.blacklistAlertTitle'))}</div>
+                  <div class="mt-0.5">${esc(t('booking.blacklistAlertDesc', { reason: blMatch.reason }))}</div>
+                </div>
+                ${canOverrideBL ? `<button type="button" onclick="submitBooking(true)" class="px-3 py-1.5 rounded-lg bg-red-700 hover:bg-red-800 text-white font-medium">${isVi ? 'Nhân viên vẫn cho phép đặt' : 'Staff Override & Book'}</button>` : ''}
+              </div>
+            ` : ''}
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.guestName'))}</label>
+                <input id="inp-guest-name" type="text" value="${esc(d.guestName)}" onchange="syncDraftInputs(); render();" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.registrantName'))}</label>
+                <input id="inp-registrant" type="text" value="${esc(d.registrantName)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.guestType'))}</label>
+                <select id="inp-guest-type" onchange="syncDraftInputs()" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                  <option value="Individual" ${d.guestType === 'Individual' ? 'selected' : ''}>${esc(t('booking.indiv'))}</option>
+                  <option value="Group" ${d.guestType === 'Group' ? 'selected' : ''}>${esc(t('booking.group'))}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.phone'))}</label>
+                <input id="inp-phone" type="text" value="${esc(d.phone)}" onchange="syncDraftInputs(); render();" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm tabular-nums" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.email'))}</label>
+                <input id="inp-email" type="email" value="${esc(d.email)}" onchange="syncDraftInputs(); render();" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.address'))}</label>
+                <input id="inp-address" type="text" value="${esc(d.address)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.paymentUnit'))}</label>
+                <input id="inp-payment-unit" type="text" value="${esc(d.paymentUnit)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.resType'))}</label>
+                <select id="inp-res-type" onchange="syncDraftInputs(); render();" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                  <option value="Guaranteed" ${isGuaranteed ? 'selected' : ''}>${esc(t('booking.guaranteed'))}</option>
+                  <option value="Non-guaranteed" ${!isGuaranteed ? 'selected' : ''}>${esc(t('booking.nonGuaranteed', { time: state.policies.holdUntilTime }))}</option>
+                </select>
+              </div>
+
+              ${isGuaranteed ? `
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.guaranteeMethod'))}</label>
+                  <select id="inp-g-method" onchange="syncDraftInputs(); render();" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    ${Object.entries(t('booking.methods')).map(([k, lbl]) => `<option value="${esc(k)}" ${d.guaranteeMethod === k ? 'selected' : ''}>${esc(lbl)}</option>`).join('')}
+                  </select>
+                </div>
+                ${d.guaranteeMethod === 'Credit Card' ? `
+                  <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.cardNumber'))}</label>
+                    <input id="inp-card" type="text" placeholder="4111 2222 3333 4829" value="${esc(d.cardInput)}" onblur="this.value = maskCardNumber(this.value); ui.bookingDraft.cardInput=this.value;" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm tabular-nums" />
+                  </div>
+                ` : ''}
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1">${esc(t('booking.depositAmount'))}</label>
+                  <input id="inp-deposit" type="number" min="0" step="100000" value="${esc(d.depositAmount)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm tabular-nums" />
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="mt-5 pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <button type="button" onclick="ui.wizardStep=3; render();" class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50">${esc(t('booking.backToSearch'))}</button>
+              <button type="button" onclick="submitBooking(false)" ${blMatch ? 'disabled' : ''} class="px-5 py-2 rounded-lg text-sm font-medium text-white ${blMatch ? 'bg-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}">
+                ${esc(t('booking.submitBooking'))}
+              </button>
+            </div>
+          </section>
+        `;
+      }
+
+      return `
+        <div class="mb-4">
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900">${esc(t('booking.heading'))}</h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-0.5">${esc(t('booking.sub'))}</p>
+        </div>
+        ${stepperHtml}
+        ${presetsHtml}
+        ${agentBanner}
+        ${step1Html}
+        ${step2Html}
+        ${step3Html}
+        ${step4Html}
+      `;
+    }
+
+    function renderStaffDesk() {
+      const isVi = ui.lang === 'vi';
+      const f = ui.staffFilter;
+
+      let list = state.bookings.filter(b => {
+        if (f.status !== 'ALL' && b.status !== f.status) return false;
+        if (f.date && b.checkIn !== f.date) return false;
+        if (f.query) {
+          const q = f.query.toLowerCase();
+          if (!b.guestName.toLowerCase().includes(q) && !b.bookingNo.toLowerCase().includes(q)) return false;
+        }
+        return true;
+      });
+
+      list.sort((a, b) => f.sortBy === 'az'
+        ? a.guestName.localeCompare(b.guestName, 'vi')
+        : a.checkIn.localeCompare(b.checkIn) || a.bookingNo.localeCompare(b.bookingNo)
+      );
+
+      const bookingRows = list.map(b => {
+        const active = isBookingActiveStatus(b.status);
+        return `
+          <tr class="border-t border-slate-200 text-xs sm:text-sm hover:bg-slate-50/80">
+            <td class="px-3 py-3 font-semibold text-slate-900 tabular-nums whitespace-nowrap">
+              <div>${esc(b.bookingNo)}</div>
+              <div class="text-[11px] font-normal text-slate-500">${esc(b.reconfirmDeadline)}</div>
+            </td>
+            <td class="px-3 py-3">
+              <div class="font-medium text-slate-900">${esc(b.guestName)}</div>
+              <div class="text-xs text-slate-500">${esc(b.phone)} · ${esc(b.source)}</div>
+            </td>
+            <td class="px-3 py-3 tabular-nums whitespace-nowrap">
+              <div class="font-medium text-slate-900">${esc(b.qty)} × ${esc(b.roomType)}</div>
+              <div class="text-xs text-slate-500">${esc(b.checkIn)} → ${esc(b.checkOut)} (${esc(b.nights)}n)</div>
+            </td>
+            <td class="px-3 py-3 text-xs">
+              <div class="font-medium text-slate-800">${esc(b.reservationType)}</div>
+              <div class="text-slate-500">${b.guaranteeMethod !== 'None' ? esc(b.guaranteeMethod) + (b.cardMasked ? ' ' + esc(b.cardMasked) : '') : (isVi ? 'Giữ đến ' : 'Hold ') + esc(state.policies.holdUntilTime)}</div>
+            </td>
+            <td class="px-3 py-3 whitespace-nowrap">${statusBadge(b.status)}</td>
+            <td class="px-3 py-3 whitespace-nowrap">
+              <div class="flex flex-wrap gap-1.5">
+                ${active && !b.reconfirmed ? `<button type="button" onclick="reconfirmBooking('${esc(b.bookingNo)}')" class="px-2 py-1 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100">${esc(t('staff.btnReconfirm'))}</button>` : ''}
+                ${active ? `<button type="button" onclick="openModifyModal('${esc(b.bookingNo)}')" class="px-2 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100">${esc(t('staff.btnModify'))}</button>` : ''}
+                ${active ? `<button type="button" onclick="openCancelModal('${esc(b.bookingNo)}')" class="px-2 py-1 rounded text-xs font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">${esc(t('staff.btnCancel'))}</button>` : ''}
+                <button type="button" onclick="openHistoryModal('${esc(b.bookingNo)}')" class="px-2 py-1 rounded text-xs font-medium bg-white text-slate-700 border border-slate-300 hover:bg-slate-50">${esc(t('staff.btnHistory'))}</button>
+                <button type="button" onclick="openEmailVoucherModal('${esc(b.bookingNo)}')" class="px-2 py-1 rounded text-xs font-medium bg-white text-slate-700 border border-slate-300 hover:bg-slate-50">${esc(t('staff.btnEmail'))}</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // Waitlist panel
+      const wlRows = state.waitlist.map(w => {
+        const canFulfill = w.status !== 'Converted' && checkAvailabilityRange(state, w.roomType, w.checkIn, w.nights, w.qty).available;
+        return `
+          <tr class="border-t border-slate-200 text-xs ${w.status === 'Notified' || canFulfill ? 'bg-emerald-50/50' : ''}">
+            <td class="px-3 py-2.5 font-medium text-slate-900">${esc(w.id)} · ${esc(w.guestName)}<div class="text-slate-500 font-normal">${esc(w.phone)} · ${esc(w.email)}</div></td>
+            <td class="px-3 py-2.5 tabular-nums">${esc(w.qty)} × ${esc(w.roomType)}<div class="text-slate-500">${esc(w.checkIn)} (${esc(w.nights)}n)</div></td>
+            <td class="px-3 py-2.5">${statusBadge(w.status)} ${canFulfill ? `<span class="ml-1 text-[11px] font-semibold text-emerald-700">(${isVi ? 'Đủ phòng!' : 'Ready!'})</span>` : ''}</td>
+            <td class="px-3 py-2.5 text-right">
+              ${w.status !== 'Converted' ? `<button type="button" onclick="convertWaitlistToBooking('${esc(w.id)}')" class="px-2.5 py-1 rounded text-xs font-medium ${canFulfill ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'}">${esc(t('staff.btnConvertWL'))}</button>` : ''}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // Blacklist panel
+      const blRows = state.blacklist.map(b => `
+        <tr class="border-t border-slate-200 text-xs">
+          <td class="px-3 py-2.5 font-medium text-slate-900">${esc(b.name)}<div class="text-slate-500 font-normal tabular-nums">${esc(b.phone)} · ${esc(b.email)}</div></td>
+          <td class="px-3 py-2.5 text-red-700">${esc(b.reason)}</td>
+          <td class="px-3 py-2.5 text-right"><button type="button" onclick="removeBlacklistEntry('${esc(b.id)}')" class="px-2 py-1 rounded border border-slate-300 hover:bg-slate-100 text-slate-700">${esc(t('staff.btnRemoveBL'))}</button></td>
+        </tr>
+      `).join('');
+
+      const statuses = ['ALL', 'Confirmed', 'Pending Reconfirm', 'Modified', 'Cancelled', 'Expired (18:00 Cutoff)', 'No-Show'];
+
+      return `
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg sm:text-xl font-bold text-slate-900">${esc(t('staff.heading'))}</h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">${esc(t('staff.sub'))}</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="simulate1800Cutoff()" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-white bg-amber-600 hover:bg-amber-700">${esc(t('staff.btnCutoff'))}</button>
+            <button type="button" onclick="sendReconfirmReminders()" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50">${esc(t('staff.btnReminders'))}</button>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <section class="bg-white rounded-xl border border-slate-200 p-3.5 mb-5 grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+          <input type="text" placeholder="${esc(t('staff.searchPlaceholder'))}" value="${esc(f.query)}" oninput="ui.staffFilter.query=this.value; render();" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+          <input type="date" value="${esc(f.date)}" onchange="ui.staffFilter.date=this.value; render();" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm tabular-nums" />
+          <select onchange="ui.staffFilter.status=this.value; render();" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+            ${statuses.map(st => `<option value="${esc(st)}" ${f.status === st ? 'selected' : ''}>${st === 'ALL' ? esc(t('staff.filterStatus')) : esc(t(`statusLabels.${st}`))}</option>`).join('')}
+          </select>
+          <select onchange="ui.staffFilter.sortBy=this.value; render();" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+            <option value="date" ${f.sortBy === 'date' ? 'selected' : ''}>${esc(t('staff.sortDate'))}</option>
+            <option value="az" ${f.sortBy === 'az' ? 'selected' : ''}>${esc(t('staff.sortAZ'))}</option>
+          </select>
+        </section>
+
+        <!-- Bookings Table -->
+        <section class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-6">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                <tr>
+                  <th class="px-3 py-2.5">${esc(t('staff.colBookingNo'))}</th>
+                  <th class="px-3 py-2.5">${esc(t('staff.colGuest'))}</th>
+                  <th class="px-3 py-2.5">${esc(t('staff.colStay'))}</th>
+                  <th class="px-3 py-2.5">${esc(t('staff.colGuarantee'))}</th>
+                  <th class="px-3 py-2.5">${esc(t('staff.colStatus'))}</th>
+                  <th class="px-3 py-2.5">${esc(t('staff.colActions'))}</th>
+                </tr>
+              </thead>
+              <tbody>${bookingRows || `<tr><td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">${isVi ? 'Không có phiếu phù hợp.' : 'No matching bookings.'}</td></tr>`}</tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Waitlist & Blacklist Split -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 font-semibold text-sm text-slate-900">${esc(t('staff.waitlistHeading'))}</div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse"><tbody>${wlRows}</tbody></table>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 font-semibold text-sm text-slate-900">${esc(t('staff.blacklistHeading'))}</div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse"><tbody>${blRows}</tbody></table>
+            </div>
+            <div class="p-3 border-t border-slate-200 bg-slate-50/60 grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <input id="bl-new-name" type="text" placeholder="${isVi ? 'Họ tên *' : 'Name *'}" class="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs" />
+              <input id="bl-new-phone" type="text" placeholder="${isVi ? 'SĐT' : 'Phone'}" class="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs" />
+              <input id="bl-new-reason" type="text" placeholder="${isVi ? 'Lý do *' : 'Reason *'}" class="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs" />
+              <button type="button" onclick="addBlacklistEntry()" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-red-600 hover:bg-red-700 text-white">${esc(t('staff.btnAddBL'))}</button>
+            </div>
+          </section>
+        </div>
+      `;
+    }
+
+    function renderReceptionView() {
+      const isVi = ui.lang === 'vi';
+      const targetDate = ui.receptionDate;
+      const arrivals = state.bookings.filter(b => b.checkIn === targetDate && (isBookingActiveStatus(b.status) || b.status === 'No-Show'));
+      const departures = state.bookings.filter(b => b.checkOut === targetDate && isBookingActiveStatus(b.status));
+      const m = state.receptionMetrics[targetDate] || { walkins: 0, earlyCheckouts: 0, overstays: 0 };
+      const noShows = arrivals.filter(b => b.status === 'No-Show').length;
+
+      const kpis = [
+        { label: t('reception.kpiArrivals'), val: arrivals.filter(b => b.status !== 'No-Show').length, tone: 'text-blue-700' },
+        { label: t('reception.kpiDepartures'), val: departures.length, tone: 'text-slate-900' },
+        { label: t('reception.kpiWalkins'), val: m.walkins, tone: 'text-emerald-700' },
+        { label: t('reception.kpiEarly'), val: m.earlyCheckouts, tone: 'text-amber-700' },
+        { label: t('reception.kpiOverstays'), val: m.overstays, tone: 'text-orange-700' },
+        { label: t('reception.kpiNoShows'), val: noShows, tone: 'text-red-700' }
+      ];
+
+      return `
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg sm:text-xl font-bold text-slate-900">${esc(t('reception.heading'))}</h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">${esc(t('reception.sub'))}</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="text-xs font-medium text-slate-600">${esc(t('reception.targetDate'))}:</label>
+            <input type="date" value="${esc(targetDate)}" onchange="ui.receptionDate=this.value; render();" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm tabular-nums" />
+            <button type="button" onclick="logReceptionEvent('walkin')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white">${esc(t('reception.btnAddWalkin'))}</button>
+            <button type="button" onclick="logReceptionEvent('early')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-300 hover:bg-slate-50 text-slate-700">${esc(t('reception.btnMarkEarly'))}</button>
+            <button type="button" onclick="logReceptionEvent('overstay')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-300 hover:bg-slate-50 text-slate-700">${esc(t('reception.btnMarkOverstay'))}</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+          ${kpis.map(k => `
+            <div class="bg-white rounded-xl border border-slate-200 p-3.5">
+              <div class="text-xs text-slate-500">${esc(k.label)}</div>
+              <div class="text-2xl font-bold tabular-nums mt-1 ${k.tone}">${k.val}</div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 font-semibold text-sm text-slate-900">${esc(t('reception.arrivalsTitle'))} (${esc(targetDate)})</div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead class="bg-slate-50/50 text-[11px] uppercase text-slate-500">
+                  <tr><th class="px-3 py-2">${isVi ? 'Số phiếu' : 'Booking'}</th><th class="px-3 py-2">${isVi ? 'Khách' : 'Guest'}</th><th class="px-3 py-2">${isVi ? 'Phòng' : 'Rooms'}</th><th class="px-3 py-2">${isVi ? 'Trạng thái' : 'Status'}</th><th class="px-3 py-2 text-right">${isVi ? 'Thao tác' : 'Action'}</th></tr>
+                </thead>
+                <tbody>
+                  ${arrivals.map(b => `
+                    <tr class="border-t border-slate-200">
+                      <td class="px-3 py-2.5 font-semibold tabular-nums">${esc(b.bookingNo)}</td>
+                      <td class="px-3 py-2.5">${esc(b.guestName)}<div class="text-xs text-slate-500">${esc(b.specialRequest || b.reservationType)}</div></td>
+                      <td class="px-3 py-2.5 tabular-nums">${esc(b.qty)} × ${esc(b.roomType)}</td>
+                      <td class="px-3 py-2.5">${statusBadge(b.status)}</td>
+                      <td class="px-3 py-2.5 text-right">
+                        ${isBookingActiveStatus(b.status) ? `<button type="button" onclick="logReceptionEvent('noshow', '${esc(b.bookingNo)}')" class="px-2 py-1 rounded text-xs font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">${esc(t('reception.btnMarkNoShow'))}</button>` : '—'}
+                      </td>
+                    </tr>
+                  `).join('') || `<tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">${isVi ? 'Không có khách đến.' : 'No arrivals scheduled.'}</td></tr>`}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 font-semibold text-sm text-slate-900">${esc(t('reception.departuresTitle'))} (${esc(targetDate)})</div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead class="bg-slate-50/50 text-[11px] uppercase text-slate-500">
+                  <tr><th class="px-3 py-2">${isVi ? 'Số phiếu' : 'Booking'}</th><th class="px-3 py-2">${isVi ? 'Khách' : 'Guest'}</th><th class="px-3 py-2">${isVi ? 'Phòng' : 'Rooms'}</th><th class="px-3 py-2">${isVi ? 'Tổng tiền' : 'Total'}</th></tr>
+                </thead>
+                <tbody>
+                  ${departures.map(b => `
+                    <tr class="border-t border-slate-200">
+                      <td class="px-3 py-2.5 font-semibold tabular-nums">${esc(b.bookingNo)}</td>
+                      <td class="px-3 py-2.5">${esc(b.guestName)}<div class="text-xs text-slate-500">${esc(b.paymentUnit)}</div></td>
+                      <td class="px-3 py-2.5 tabular-nums">${esc(b.qty)} × ${esc(b.roomType)}</td>
+                      <td class="px-3 py-2.5 font-medium tabular-nums">${formatVND(b.totalAmount)}</td>
+                    </tr>
+                  `).join('') || `<tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">${isVi ? 'Không có khách trả phòng.' : 'No departures scheduled.'}</td></tr>`}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      `;
+    }
+
+    function renderManagerConsole() {
+      const isVi = ui.lang === 'vi';
+      const p = state.policies;
+      const densityRt = ui.densityRoomType;
+
+      // 30-day November 2026 density heatmap (FR-13)
+      const densityCells = Array.from({ length: 30 }, (_, idx) => {
+        const day = idx + 1;
+        const dateStr = `2026-11-${String(day).padStart(2, '0')}`;
+        const info = calculateNightAvailability(state, densityRt, dateStr);
+        const committed = info.occupied + info.booked + info.outOfOrder;
+        const pct = Math.min(115, Math.round((committed / Math.max(1, info.total)) * 100));
+        const colorCls = pct >= 95 ? 'bg-red-50 border-red-300 text-red-900'
+          : pct >= 70 ? 'bg-amber-50 border-amber-300 text-amber-900'
+          : 'bg-emerald-50 border-emerald-200 text-emerald-900';
+        const isTable9Focus = day >= 12 && day <= 14 && densityRt === 'Standard';
+        return `
+          <div class="p-2 rounded-lg border text-xs tabular-nums ${colorCls} ${isTable9Focus ? 'ring-2 ring-blue-500' : ''}"
+               title="${dateStr}: Occ=${info.occupied}, Booked=${info.booked}, T=${info.T}, Sellable=${info.sellable}">
+            <div class="flex items-center justify-between font-semibold">
+              <span>${day}/11</span>
+              <span>${pct}%</span>
+            </div>
+            <div class="text-[11px] opacity-80 mt-0.5">${isVi ? 'Bán:' : 'Sell:'} ${info.sellable}</div>
+          </div>
+        `;
+      }).join('');
+
+      // Inventory editor rows
+      const invRows = state.roomTypes.map(rt => `
+        <tr class="border-t border-slate-200 text-xs sm:text-sm">
+          <td class="px-3 py-2.5 font-semibold text-slate-900">${esc(rt.name)}</td>
+          <td class="px-3 py-2.5"><input id="inv-total-${esc(rt.id)}" type="number" min="1" value="${rt.total}" class="w-20 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums" /></td>
+          <td class="px-3 py-2.5"><input id="inv-ooo-${esc(rt.id)}" type="number" min="0" value="${rt.outOfOrder}" class="w-20 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums" /></td>
+          <td class="px-3 py-2.5"><input id="inv-price-${esc(rt.id)}" type="number" step="100000" value="${rt.basePrice}" class="w-32 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums" /></td>
+        </tr>
+      `).join('');
+
+      // SC-02 result display
+      const sc = ui.sc02Result;
+      const scHtml = sc ? `
+        <div class="mt-4 p-4 rounded-xl border ${sc.passed ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'} space-y-2 text-xs">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span class="font-bold text-sm ${sc.passed ? 'text-emerald-900' : 'text-red-900'}">
+              ${sc.passed ? (isVi ? 'ĐẠT SC-02 & NFR-01: 0 phòng bị đặt vượt!' : 'SC-02 & NFR-01 PASSED: Zero Overbooking!') : 'SC-02 FAILED'}
+            </span>
+            <span class="font-mono text-slate-700">${sc.elapsedMs} ms (≤ 3000 ms)</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 tabular-nums">
+            <div class="bg-white/80 p-2 rounded border border-slate-200">${isVi ? 'Bán được ban đầu:' : 'Initial Sellable:'} <strong>${sc.initialSellable}</strong></div>
+            <div class="bg-white/80 p-2 rounded border border-slate-200">${isVi ? 'Được chấp nhận:' : 'Accepted:'} <strong class="text-emerald-700">${sc.acceptedCount}</strong></div>
+            <div class="bg-white/80 p-2 rounded border border-slate-200">${isVi ? 'Bị từ chối:' : 'Rejected:'} <strong class="text-amber-700">${sc.rejectedCount}</strong></div>
+            <div class="bg-white/80 p-2 rounded border border-slate-200">${isVi ? 'Còn lại cuối:' : 'Remaining:'} <strong>${sc.finalSellable}</strong></div>
+          </div>
+          <div class="flex flex-wrap gap-1 pt-1">
+            ${sc.outcomes.map(o => `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono ${o.accepted ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}">#${o.reqNum}:${o.accepted ? 'OK' : 'FULL'}</span>`).join('')}
+          </div>
+        </div>
+      ` : '';
+
+      return `
+        <div class="mb-4">
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900">${esc(t('manager.heading'))}</h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-0.5">${esc(t('manager.sub'))}</p>
+        </div>
+
+        <!-- Monthly Density Heatmap (FR-13) -->
+        <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 mb-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 class="text-sm font-semibold text-slate-900">${esc(t('manager.densityTitle'))}</h3>
+            <select onchange="ui.densityRoomType=this.value; render();" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium">
+              ${state.roomTypes.map(r => `<option value="${esc(r.id)}" ${densityRt === r.id ? 'selected' : ''}>${esc(r.name)} (${r.total} rooms)</option>`).join('')}
+            </select>
+          </div>
+          <div class="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-10 gap-2">${densityCells}</div>
+        </section>
+
+        <!-- Inventory & Policies -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
+            <h3 class="text-sm font-semibold text-slate-900 mb-3">${esc(t('manager.inventoryTitle'))}</h3>
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-50 text-[11px] uppercase text-slate-600">
+                  <tr><th class="px-3 py-2">${isVi ? 'Loại phòng' : 'Type'}</th><th class="px-3 py-2">${isVi ? 'Tổng' : 'Total'}</th><th class="px-3 py-2">${isVi ? 'Hỏng' : 'OOO'}</th><th class="px-3 py-2">${isVi ? 'Giá niêm yết (₫)' : 'Base Price (₫)'}</th></tr>
+                </thead>
+                <tbody>${invRows}</tbody>
+              </table>
+            </div>
+            <div class="mt-3 flex justify-end">
+              <button type="button" onclick="saveRoomInventory()" class="px-3.5 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white">${esc(t('manager.saveInventory'))}</button>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
+            <h3 class="text-sm font-semibold text-slate-900 mb-3">${esc(t('manager.policyTitle'))}</h3>
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block font-medium text-slate-600 mb-1">${isVi ? 'Tỷ lệ overbooking p (%)' : 'Overbooking Rate p (%)'}</label>
+                <input id="pol-overbook" type="number" min="0" max="50" value="${p.overbookingRate}" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm tabular-nums" />
+              </div>
+              <div>
+                <label class="block font-medium text-slate-600 mb-1">${isVi ? 'Giờ giữ phòng không đảm bảo' : 'Non-guaranteed Hold Cutoff'}</label>
+                <input id="pol-hold" type="time" value="${esc(p.holdUntilTime)}" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm tabular-nums" />
+              </div>
+              <div>
+                <label class="block font-medium text-slate-600 mb-1">${isVi ? 'Nhắc khách đoàn (ngày)' : 'Group Reconfirm (days)'}</label>
+                <input id="pol-reconf-group" type="number" min="1" value="${p.reconfirmDaysGroup}" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm tabular-nums" />
+              </div>
+              <div>
+                <label class="block font-medium text-slate-600 mb-1">${isVi ? 'Nhắc khách lẻ (ngày)' : 'Indiv Reconfirm (days)'}</label>
+                <input id="pol-reconf-indiv" type="number" min="1" value="${p.reconfirmDaysIndiv}" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm tabular-nums" />
+              </div>
+              <div>
+                <label class="block font-medium text-slate-600 mb-1">${isVi ? 'Phí hủy có đảm bảo (%)' : 'Guaranteed Cancel Fee (%)'}</label>
+                <input id="pol-cancel-fee" type="number" min="0" max="100" value="${p.cancelFeePercent}" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm tabular-nums" />
+              </div>
+            </div>
+            <div class="mt-4 flex justify-end">
+              <button type="button" onclick="savePolicySettings()" class="px-3.5 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white">${esc(t('manager.savePolicy'))}</button>
+            </div>
+          </section>
+        </div>
+
+        <!-- SC-02 Concurrency Test & Agent Contracts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
+            <h3 class="text-sm font-semibold text-slate-900">${esc(t('manager.sc02Title'))}</h3>
+            <p class="text-xs text-slate-500 mt-1">${esc(t('manager.sc02Desc'))}</p>
+            <div class="mt-3">
+              <button type="button" onclick="runConcurrencyTest50()" ${ui.sc02Running ? 'disabled' : ''} class="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium bg-slate-900 hover:bg-slate-800 text-white">
+                ${ui.sc02Running ? '...' : esc(t('manager.btnRunSc02'))}
+              </button>
+            </div>
+            ${scHtml}
+          </section>
+
+          <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
+            <h3 class="text-sm font-semibold text-slate-900 mb-3">${esc(t('manager.agentsTitle'))}</h3>
+            <div class="space-y-2.5">
+              ${state.agents.map(ag => `
+                <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs">
+                  <div>
+                    <div class="font-semibold text-slate-900">${esc(ag.name)} · ${esc(ag.contractType)}</div>
+                    <div class="text-slate-500 mt-0.5">${esc(ag.roomType)} · ${ag.contractType === 'Allotment' ? `Quota: ${ag.quota}/night` : 'Unlimited'} · Comm: ${ag.commission}%</div>
+                  </div>
+                  <button type="button" onclick="toggleAgentStatus('${esc(ag.id)}')" class="px-2.5 py-1 rounded font-medium border ${ag.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}">
+                    ${esc(ag.status)}
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </section>
+        </div>
+
+        <!-- Audit Log (NFR-04) -->
+        <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 font-semibold text-sm text-slate-900">${esc(t('manager.auditTitle'))}</div>
+          <div class="max-h-64 overflow-y-auto divide-y divide-slate-200 text-xs">
+            ${state.auditLogs.map(log => `
+              <div class="px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span class="font-mono font-semibold text-blue-700 mr-2">${esc(log.action)}</span>
+                  <span class="text-slate-800">${esc(log.detail)}</span>
+                </div>
+                <div class="text-slate-500 tabular-nums">${esc(log.actor)} · ${esc(log.ts)}</div>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+      `;
+    }
+
+    function render() {
+      renderNavigation();
+      const root = document.getElementById('app-content');
+      if (ui.tab === 'booking') root.innerHTML = renderBookingFlow();
+      else if (ui.tab === 'staff') root.innerHTML = renderStaffDesk();
+      else if (ui.tab === 'reception') root.innerHTML = renderReceptionView();
+      else if (ui.tab === 'manager') root.innerHTML = renderManagerConsole();
+    }
+
+    // Initialize default Table 9 Step 2 check on load
+    runStep2Check(false);
+    render();
+  </script>
+</body>
+</html>
