@@ -1073,7 +1073,7 @@
       if (preset === 'table9') {
         ui.search = { checkIn: '2026-11-12', nights: 3, roomType: 'Standard', qty: 15, guests: 30, source: 'Online' };
         ui.wizardStep = 2;
-        runStep2Check(true);
+        runStep2Check(true, false);
       } else if (preset === 'lan') {
         ui.search = { checkIn: '2026-11-12', nights: 3, roomType: 'Standard', qty: 2, guests: 3, source: 'Online' };
         ui.bookingDraft.guestName = 'Nguyễn Thị Lan (New)';
@@ -1082,22 +1082,22 @@
         ui.bookingDraft.email = 'lan.demo@example.com';
         ui.bookingDraft.address = 'Hà Nội';
         ui.wizardStep = 2;
-        runStep2Check(true);
+        runStep2Check(true, false);
       } else if (preset === 'blacklist') {
         ui.search = { checkIn: '2026-11-12', nights: 2, roomType: 'Standard', qty: 1, guests: 1, source: 'Online' };
         ui.bookingDraft.guestName = 'Trịnh Quốc Bảo';
         ui.bookingDraft.registrantName = 'Trịnh Quốc Bảo';
         ui.bookingDraft.phone = '0999888777';
         ui.bookingDraft.email = 'blacklist@example.com';
-        runStep2Check(false);
+        runStep2Check(false, false);
         ui.wizardStep = 4;
         render();
       }
     }
 
-    function runStep2Check(shouldRender = true) {
+    function runStep2Check(shouldRender = true, readFromForm = true) {
       const formEl = document.getElementById('step1-form');
-      if (formEl) {
+      if (formEl && readFromForm) {
         ui.search.checkIn = document.getElementById('inp-checkin').value || '2026-11-12';
         ui.search.nights = Math.max(1, Math.min(30, Number(document.getElementById('inp-nights').value) || 1));
         ui.search.roomType = document.getElementById('inp-roomtype').value;
@@ -1124,7 +1124,7 @@
       } else if (type === 'date') {
         ui.search.checkIn = value;
       }
-      runStep2Check(false);
+      runStep2Check(false, false);
       if (ui.availabilityCheck.available) {
         ui.wizardStep = 3;
       }
