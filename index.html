@@ -187,6 +187,10 @@
           formulaTitle: 'Nightly Room Availability',
           formulaLegend: 'Available = Vacant rooms + Overbooking buffer (capped at {rate}% of total)',
           nightCol: 'Night',
+          totalCol: 'Total',
+          occCol: 'Occupied',
+          bookedCol: 'Booked',
+          guestVacantCol: 'Vacant',
           vacantCol: 'Vacant Rooms',
           bufferCol: 'Overbooking Buffer',
           sellableCol: 'Available',
@@ -369,6 +373,10 @@
           formulaTitle: 'Tình trạng phòng trống theo từng đêm',
           formulaLegend: 'Có thể đặt = Phòng thực trống + Đệm dự phòng (tối đa {rate}% tổng số phòng)',
           nightCol: 'Đêm lưu trú',
+          totalCol: 'Tổng',
+          occCol: 'Đang ở',
+          bookedCol: 'Đã đặt',
+          guestVacantCol: 'Còn trống',
           vacantCol: 'Phòng thực trống',
           bufferCol: 'Đệm dự phòng',
           sellableCol: 'Có thể đặt',
@@ -2038,9 +2046,28 @@
       let step2Html = '';
       const av = ui.availabilityCheck;
       if (av) {
+        const isGuest = ui.role === 'guest';
         const rate = state.policies.overbookingRate;
         const rows = av.breakdown.map((n, idx) => {
           const appliedBuffer = Math.min(n.D, n.cap);
+          const statusCell = n.sufficient
+            ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">${esc(t('booking.sufficient'))}</span>`
+            : `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">${esc(t('booking.shortBy', { n: n.shortfall }))}</span>`;
+
+          if (isGuest) {
+            return `
+            <tr class="${n.sufficient ? '' : 'bg-red-50/70'} border-t border-slate-200 text-xs sm:text-sm tabular-nums">
+              <td class="px-3 py-3 font-medium text-slate-900 whitespace-nowrap">${isVi ? 'Đêm' : 'Night'} ${idx + 1} · ${esc(n.date)}</td>
+              <td class="px-3 py-3 text-right text-slate-700">${n.total}</td>
+              <td class="px-3 py-3 text-right text-slate-700">${n.occupied}</td>
+              <td class="px-3 py-3 text-right text-slate-700">${n.booked}</td>
+              <td class="px-3 py-3 text-right font-bold text-slate-900">${n.sellable}</td>
+              <td class="px-3 py-3 text-right font-medium text-slate-700">${n.requested}</td>
+              <td class="px-3 py-3 text-right whitespace-nowrap">${statusCell}</td>
+            </tr>
+            `;
+          }
+
           return `
           <tr class="${n.sufficient ? '' : 'bg-red-50/70'} border-t border-slate-200 text-xs sm:text-sm tabular-nums">
             <td class="px-3 py-3 font-medium text-slate-900 whitespace-nowrap">${isVi ? 'Đêm' : 'Night'} ${idx + 1} · ${esc(n.date)}</td>
@@ -2054,12 +2081,7 @@
             </td>
             <td class="px-3 py-3 text-right font-bold text-slate-900">${n.sellable}</td>
             <td class="px-3 py-3 text-right font-medium text-slate-700">${n.requested}</td>
-            <td class="px-3 py-3 text-right whitespace-nowrap">
-              ${n.sufficient
-                ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">${esc(t('booking.sufficient'))}</span>`
-                : `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">${esc(t('booking.shortBy', { n: n.shortfall }))}</span>`
-              }
-            </td>
+            <td class="px-3 py-3 text-right whitespace-nowrap">${statusCell}</td>
           </tr>
         `;
         }).join('');
@@ -2107,15 +2129,17 @@
           `;
         }
 
-        step2Html = `
-          <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 mb-5">
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <h3 class="text-sm font-semibold text-slate-900">${esc(t('booking.formulaTitle'))}</h3>
-              <span class="text-xs text-slate-500">${esc(t('booking.formulaLegend', { rate: state.policies.overbookingRate }))}</span>
-            </div>
-            <div class="overflow-x-auto border border-slate-200 rounded-lg">
-              <table class="w-full text-left border-collapse">
-                <thead class="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+        const tableHead = isGuest ? `
+                  <tr>
+                    <th class="px-3 py-2.5">${esc(t('booking.nightCol'))}</th>
+                    <th class="px-3 py-2.5 text-right">${esc(t('booking.totalCol'))}</th>
+                    <th class="px-3 py-2.5 text-right">${esc(t('booking.occCol'))}</th>
+                    <th class="px-3 py-2.5 text-right">${esc(t('booking.bookedCol'))}</th>
+                    <th class="px-3 py-2.5 text-right">${esc(t('booking.guestVacantCol'))}</th>
+                    <th class="px-3 py-2.5 text-right">${esc(t('booking.reqCol'))}</th>
+                    <th class="px-3 py-2.5 text-right">${esc(t('booking.resultCol'))}</th>
+                  </tr>
+        ` : `
                   <tr>
                     <th class="px-3 py-2.5">${esc(t('booking.nightCol'))}</th>
                     <th class="px-3 py-2.5 text-right">${esc(t('booking.vacantCol'))}</th>
@@ -2124,6 +2148,18 @@
                     <th class="px-3 py-2.5 text-right">${esc(t('booking.reqCol'))}</th>
                     <th class="px-3 py-2.5 text-right">${esc(t('booking.resultCol'))}</th>
                   </tr>
+        `;
+
+        step2Html = `
+          <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 mb-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h3 class="text-sm font-semibold text-slate-900">${esc(t('booking.formulaTitle'))}</h3>
+              ${isGuest ? '' : `<span class="text-xs text-slate-500">${esc(t('booking.formulaLegend', { rate: state.policies.overbookingRate }))}</span>`}
+            </div>
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                  ${tableHead}
                 </thead>
                 <tbody>${rows}</tbody>
               </table>
